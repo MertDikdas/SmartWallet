@@ -32,3 +32,10 @@ management:
 logging:
   level:
     org.hibernate.SQL: DEBUG
+
+security:
+  jwt:
+    issuer: smartwallet-auth-service
+    access-token-ttl: PT15M
+    private-key: classpath:keys/private.pem
+    public-key: classpath:keys/public.pem
