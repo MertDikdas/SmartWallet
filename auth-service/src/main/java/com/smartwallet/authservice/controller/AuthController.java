@@ -1,6 +1,7 @@
 package com.smartwallet.authservice.controller;
 
 import com.smartwallet.authservice.dto.request.LoginRequest;
+import com.smartwallet.authservice.dto.request.RefreshTokenRequest;
 import com.smartwallet.authservice.dto.request.RegisterRequest;
 import com.smartwallet.authservice.dto.response.AuthResponse;
 import com.smartwallet.authservice.dto.response.UserResponse;
@@ -37,5 +38,23 @@ public class AuthController {
         return ResponseEntity.ok(
                 authService.login(request)
         );
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        return ResponseEntity.ok(
+                authService.refresh(request)
+        );
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        authService.logout(request);
+
+        return ResponseEntity.noContent().build();
     }
 }

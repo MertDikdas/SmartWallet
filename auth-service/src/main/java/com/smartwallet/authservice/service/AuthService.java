@@ -3,6 +3,7 @@ package com.smartwallet.authservice.service;
 
 import com.smartwallet.authservice.config.JwtProperties;
 import com.smartwallet.authservice.dto.request.LoginRequest;
+import com.smartwallet.authservice.dto.request.RefreshTokenRequest;
 import com.smartwallet.authservice.dto.request.RegisterRequest;
 import com.smartwallet.authservice.dto.response.AuthResponse;
 import com.smartwallet.authservice.dto.response.UserResponse;
@@ -11,6 +12,7 @@ import com.smartwallet.authservice.entity.User;
 import com.smartwallet.authservice.exception.EmailAlreadyExistsException;
 import com.smartwallet.authservice.mapper.UserMapper;
 import com.smartwallet.authservice.repository.UserRepository;
+import com.smartwallet.authservice.security.RefreshTokenService;
 import com.smartwallet.authservice.security.TokenService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
     private final JwtProperties jwtProperties;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -54,7 +57,7 @@ public class AuthService {
         return userMapper.toUserResponse(savedUser);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
 
@@ -72,12 +75,50 @@ public class AuthService {
         String accessToken =
                 tokenService.generateAccessToken(user);
 
+        RefreshTokenService.IssuedRefreshToken refreshToken =
+                refreshTokenService.issue(user);
+
+        return createAuthResponse(
+                user,
+                accessToken,
+                refreshToken.value()
+        );
+    }
+
+    @Transactional
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        RefreshTokenService.IssuedRefreshToken rotatedToken =
+                refreshTokenService.rotate(request.refreshToken());
+
+        User user = rotatedToken.user();
+
+        String newAccessToken =
+                tokenService.generateAccessToken(user);
+
+        return createAuthResponse(
+                user,
+                newAccessToken,
+                rotatedToken.value()
+        );
+    }
+
+    private AuthResponse createAuthResponse(
+            User user,
+            String accessToken,
+            String refreshToken
+    ) {
         return new AuthResponse(
                 accessToken,
+                refreshToken,
                 "Bearer",
                 jwtProperties.accessTokenTtl().toSeconds(),
                 userMapper.toUserResponse(user)
         );
+    }
+
+    @Transactional
+    public void logout(RefreshTokenRequest request) {
+        refreshTokenService.revoke(request.refreshToken());
     }
 
     private String normalizeEmail(String email) {

@@ -39,3 +39,5 @@ security:
     access-token-ttl: PT15M
     private-key: classpath:keys/private.pem
     public-key: classpath:keys/public.pem
+  refresh-token:
+    ttl: P7D
