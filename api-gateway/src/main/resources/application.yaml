@@ -16,6 +16,10 @@ spring:
 server:
   port: 8080
 
+security:
+  jwt:
+    issuer: smartwallet-auth-service
+    public-key: classpath:keys/public.pem
 
 management:
   endpoints:

@@ -75,3 +75,6 @@ rabbitmq-data/
 
 # Spring Boot
 spring-shell.log
+
+# private key
+**/src/main/resources/keys/private.pem
