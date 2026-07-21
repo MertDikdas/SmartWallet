@@ -1,0 +1,38 @@
+services:
+  auth-postgres:
+    image: postgres:16-alpine
+    container_name: smartwallet-auth-postgres
+    environment:
+      POSTGRES_DB: smartwallet_auth
+      POSTGRES_USER: smartwallet
+      POSTGRES_PASSWORD: smartwallet
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartwallet -d smartwallet_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  finance-postgres:
+    image: postgres:16-alpine
+    container_name: smartwallet-finance-postgres
+    environment:
+      POSTGRES_DB: smartwallet_finance
+      POSTGRES_USER: smartwallet
+      POSTGRES_PASSWORD: smartwallet
+    ports:
+      - "5434:5432"
+    volumes:
+      - finance-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartwallet -d smartwallet_finance"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  auth-postgres-data:
+  finance-postgres-data:

@@ -1,3 +1,39 @@
 spring:
   application:
-    name: finance-service
+    name: smartwallet-finance-service
+
+  datasource:
+    url: ${FINANCE_DB_URL:jdbc:postgresql://localhost:5434/smartwallet_finance}
+    username: ${FINANCE_DB_USERNAME:smartwallet}
+    password: ${FINANCE_DB_PASSWORD:smartwallet}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8082
+
+security:
+  jwt:
+    issuer: smartwallet-auth-service
+    public-key: classpath:keys/public.pem
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
