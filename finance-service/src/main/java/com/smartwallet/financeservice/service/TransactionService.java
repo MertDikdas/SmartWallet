@@ -1,11 +1,13 @@
 package com.smartwallet.financeservice.service;
 
 import com.smartwallet.financeservice.dto.request.CreateTransactionRequest;
+import com.smartwallet.financeservice.dto.request.UpdateTransactionRequest;
 import com.smartwallet.financeservice.dto.response.TransactionResponse;
 import com.smartwallet.financeservice.entity.*;
 import com.smartwallet.financeservice.exception.AccountNotFoundException;
 import com.smartwallet.financeservice.exception.CategoryNotFoundException;
 import com.smartwallet.financeservice.exception.CategoryTypeMismatchException;
+import com.smartwallet.financeservice.exception.FinancialTransactionNotFoundException;
 import com.smartwallet.financeservice.mapper.TransactionMapper;
 import com.smartwallet.financeservice.repository.AccountRepository;
 import com.smartwallet.financeservice.repository.CategoryRepository;
@@ -103,6 +105,161 @@ public class TransactionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public TransactionResponse getTransaction(
+            Long userId,
+            Long transactionId
+    ){
+        FinancialTransaction transaction = transactionRepository
+                .findByIdAndUserId(transactionId, userId)
+                .orElseThrow(
+                        ()-> new FinancialTransactionNotFoundException(
+                                transactionId
+                        )
+                );
+
+        return transactionMapper.toResponse(transaction);
+    }
+
+    @Transactional
+    public TransactionResponse updateTransaction(
+            Long userId,
+            Long transactionId,
+            UpdateTransactionRequest request
+    ) {
+        FinancialTransaction transaction =
+                transactionRepository
+                        .findOwnedTransactionForUpdate(
+                                transactionId,
+                                userId
+                        )
+                        .orElseThrow(
+                                () -> new FinancialTransactionNotFoundException(
+                                        transactionId
+                                )
+                        );
+
+        Long oldAccountId =
+                transaction.getAccount().getId();
+
+        Long newAccountId =
+                request.accountId() != null
+                        ? request.accountId()
+                        : oldAccountId;
+
+        AccountPair accounts = lockAccounts(
+                userId,
+                oldAccountId,
+                newAccountId
+        );
+
+        Category newCategory =
+                request.categoryId() != null
+                        ? findOwnedCategory(
+                        userId,
+                        request.categoryId()
+                )
+                        : transaction.getCategory();
+
+        TransactionType newType =
+                request.type() != null
+                        ? request.type()
+                        : transaction.getType();
+
+        BigDecimal newAmount =
+                request.amount() != null
+                        ? request.amount()
+                        : transaction.getAmount();
+
+        validateCategoryType(newCategory, newType);
+
+        // Eski transaction'ın bakiye etkisini kaldır
+        reverseBalanceEffect(
+                accounts.oldAccount(),
+                transaction.getType(),
+                transaction.getAmount()
+        );
+
+        // Yeni transaction'ın bakiye etkisini uygula
+        applyBalanceEffect(
+                accounts.newAccount(),
+                newType,
+                newAmount
+        );
+
+        transaction.setAccount(accounts.newAccount());
+        transaction.setCategory(newCategory);
+        transaction.setType(newType);
+        transaction.setAmount(newAmount);
+
+        if (request.description() != null) {
+            transaction.setDescription(
+                    normalizeDescription(request.description())
+            );
+        }
+
+        if (request.transactionDate() != null) {
+            transaction.setTransactionDate(
+                    request.transactionDate()
+            );
+        }
+
+        accountRepository.save(accounts.oldAccount());
+
+        if (!oldAccountId.equals(newAccountId)) {
+            accountRepository.save(accounts.newAccount());
+        }
+
+        FinancialTransaction savedTransaction =
+                transactionRepository.save(transaction);
+
+        return transactionMapper.toResponse(savedTransaction);
+    }
+
+    @Transactional
+    public void deleteTransaction(
+            Long userId,
+            Long transactionId
+    ) {
+        FinancialTransaction transaction =
+                transactionRepository
+                        .findOwnedTransactionForUpdate(
+                                transactionId,
+                                userId
+                        )
+                        .orElseThrow(
+                                () -> new FinancialTransactionNotFoundException(
+                                        transactionId
+                                )
+                        );
+
+        Account account = accountRepository
+                .findOwnedAccountForUpdate(
+                        transaction.getAccount().getId(),
+                        userId
+                )
+                .orElseThrow(
+                        () -> new AccountNotFoundException(
+                                transaction.getAccount().getId()
+                        )
+                );
+
+        reverseBalanceEffect(
+                account,
+                transaction.getType(),
+                transaction.getAmount()
+        );
+
+        accountRepository.save(account);
+        transactionRepository.delete(transaction);
+    }
+
+    private record AccountPair(
+            Account oldAccount,
+            Account newAccount
+    ) {
+    }
+
     private void validateCategoryType(
             Category category,
             TransactionType transactionType
@@ -112,6 +269,97 @@ public class TransactionService {
         }
     }
 
+
+    private Category findOwnedCategory(
+            Long userId,
+            Long categoryId
+    ) {
+        return categoryRepository
+                .findByIdAndUserId(categoryId, userId)
+                .orElseThrow(
+                        () -> new CategoryNotFoundException(categoryId)
+                );
+    }
+    private AccountPair lockAccounts(
+            Long userId,
+            Long oldAccountId,
+            Long newAccountId
+    ) {
+        if (oldAccountId.equals(newAccountId)) {
+            Account account = lockAccount(
+                    userId,
+                    oldAccountId
+            );
+
+            return new AccountPair(account, account);
+        }
+
+        Long firstAccountId =
+                Math.min(oldAccountId, newAccountId);
+
+        Long secondAccountId =
+                Math.max(oldAccountId, newAccountId);
+
+        Account firstAccount =
+                lockAccount(userId, firstAccountId);
+
+        Account secondAccount =
+                lockAccount(userId, secondAccountId);
+
+        Account oldAccount =
+                oldAccountId.equals(firstAccountId)
+                        ? firstAccount
+                        : secondAccount;
+
+        Account newAccount =
+                newAccountId.equals(firstAccountId)
+                        ? firstAccount
+                        : secondAccount;
+
+        return new AccountPair(oldAccount, newAccount);
+    }
+
+    private Account lockAccount(
+            Long userId,
+            Long accountId
+    ) {
+        return accountRepository
+                .findOwnedAccountForUpdate(accountId, userId)
+                .orElseThrow(
+                        () -> new AccountNotFoundException(accountId)
+                );
+    }
+
+    private void applyBalanceEffect(
+            Account account,
+            TransactionType type,
+            BigDecimal amount
+    ) {
+        BigDecimal newBalance = switch (type) {
+            case INCOME ->
+                    account.getBalance().add(amount);
+
+            case EXPENSE ->
+                    account.getBalance().subtract(amount);
+        };
+
+        account.setBalance(newBalance);
+    }
+    private void reverseBalanceEffect(
+            Account account,
+            TransactionType type,
+            BigDecimal amount
+    ) {
+        BigDecimal newBalance = switch (type) {
+            case INCOME ->
+                    account.getBalance().subtract(amount);
+
+            case EXPENSE ->
+                    account.getBalance().add(amount);
+        };
+
+        account.setBalance(newBalance);
+    }
     private void updateAccountBalance(
             Account account,
             TransactionType type,

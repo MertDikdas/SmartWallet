@@ -119,4 +119,21 @@ public class GlobalExceptionHandler {
                 .body(error);
     }
 
+    @ExceptionHandler(FinancialTransactionNotFoundException.class)
+    public ResponseEntity<ApiError> handleFinancialTransactionNotFoundException(
+            FinancialTransactionNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        ApiError error = new ApiError(
+                Instant.now(),
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(error);
+    }
 }

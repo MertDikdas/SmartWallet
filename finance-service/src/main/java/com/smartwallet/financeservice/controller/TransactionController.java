@@ -1,6 +1,7 @@
 package com.smartwallet.financeservice.controller;
 
 import com.smartwallet.financeservice.dto.request.CreateTransactionRequest;
+import com.smartwallet.financeservice.dto.request.UpdateTransactionRequest;
 import com.smartwallet.financeservice.dto.response.TransactionResponse;
 import com.smartwallet.financeservice.service.TransactionService;
 import jakarta.validation.Valid;
@@ -45,4 +46,53 @@ public class TransactionController {
                 transactionService.getTransactions(userId)
         );
     }
+
+    @GetMapping("/{transactionId}")
+    public ResponseEntity<TransactionResponse> getTransaction(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long transactionId
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
+        return ResponseEntity.ok(
+                transactionService.getTransaction(
+                        userId,
+                        transactionId
+                )
+        );
+    }
+
+    @PatchMapping("/{transactionId}")
+    public ResponseEntity<TransactionResponse> updateTransaction(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long transactionId,
+            @Valid @RequestBody UpdateTransactionRequest request
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
+        return ResponseEntity.ok(
+                transactionService.updateTransaction(
+                        userId,
+                        transactionId,
+                        request
+                )
+        );
+    }
+
+    @DeleteMapping("/{transactionId}")
+    public ResponseEntity<Void> deleteTransaction(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long transactionId
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
+        transactionService.deleteTransaction(
+                userId,
+                transactionId
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
+
 }
