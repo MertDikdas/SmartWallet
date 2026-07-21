@@ -1,0 +1,63 @@
+package com.smartwallet.financeservice.service;
+
+import com.smartwallet.financeservice.dto.request.CreateCategoryRequest;
+import com.smartwallet.financeservice.dto.response.CategoryResponse;
+import com.smartwallet.financeservice.entity.Category;
+import com.smartwallet.financeservice.exception.CategoryAlreadyExistsException;
+import com.smartwallet.financeservice.mapper.CategoryMapper;
+import com.smartwallet.financeservice.repository.CategoryRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CategoryService {
+
+    private final CategoryRepository categoryRepository;
+    private final CategoryMapper categoryMapper;
+
+    @Transactional
+    public CategoryResponse createCategory(
+            Long userId,
+            CreateCategoryRequest request
+    ) {
+        String normalizedName = request.name().trim();
+
+        boolean categoryExists =
+                categoryRepository
+                        .existsByUserIdAndNameIgnoreCaseAndType(
+                                userId,
+                                normalizedName,
+                                request.type()
+                        );
+
+        if (categoryExists) {
+            throw new CategoryAlreadyExistsException(
+                    normalizedName
+            );
+        }
+
+        Category category = Category.builder()
+                .userId(userId)
+                .name(normalizedName)
+                .type(request.type())
+                .build();
+
+        Category savedCategory =
+                categoryRepository.save(category);
+
+        return categoryMapper.toResponse(savedCategory);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> getCategories(Long userId) {
+        return categoryRepository
+                .findAllByUserIdOrderByNameAsc(userId)
+                .stream()
+                .map(categoryMapper::toResponse)
+                .toList();
+    }
+}
