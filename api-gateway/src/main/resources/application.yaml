@@ -17,6 +17,10 @@ spring:
               predicates:
                 - Path=/api/accounts/**, /api/transactions/**, /api/categories/**
 
+            - id: budget-service
+              uri: ${BUDGET_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/budgets/**
 
 server:
   port: 8080

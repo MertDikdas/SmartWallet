@@ -33,6 +33,24 @@ services:
       timeout: 5s
       retries: 10
 
+  budget-postgres:
+    image: postgres:16-alpine
+    container_name: smartwallet-budget-postgres
+    environment:
+      POSTGRES_DB: smartwallet_budget
+      POSTGRES_USER: smartwallet
+      POSTGRES_PASSWORD: smartwallet
+    ports:
+      - "5435:5432"
+    volumes:
+      - budget-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartwallet -d smartwallet_budget"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   auth-postgres-data:
   finance-postgres-data:
+  budget-postgres-data:

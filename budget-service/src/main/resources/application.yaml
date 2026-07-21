@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: budget-service
+  datasource:
+    url: ${BUDGET_DB_URL:jdbc:postgresql://localhost:5435/smartwallet_budget}
+    username: ${BUDGET_DB_USERNAME:smartwallet}
+    password: ${BUDGET_DB_PASSWORD:smartwallet}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+server:
+  port: 8083
+
+security:
+  jwt:
+    issuer: smartwallet-auth-service
+    public-key: classpath:keys/public.pem
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+logging:
+  level:
+    org.hibernate.SQL: DEBUG

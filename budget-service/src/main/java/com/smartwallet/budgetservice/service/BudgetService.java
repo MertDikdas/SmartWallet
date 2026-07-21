@@ -1,0 +1,120 @@
+package com.smartwallet.budgetservice.service;
+
+import com.smartwallet.budgetservice.dto.request.CreateBudgetRequest;
+import com.smartwallet.budgetservice.dto.request.UpdateBudgetRequest;
+import com.smartwallet.budgetservice.dto.response.BudgetResponse;
+import com.smartwallet.budgetservice.entity.Budget;
+import com.smartwallet.budgetservice.entity.BudgetStatus;
+import com.smartwallet.budgetservice.exception.BudgetAlreadyExistsException;
+import com.smartwallet.budgetservice.exception.BudgetNotFoundException;
+import com.smartwallet.budgetservice.mapper.BudgetMapper;
+import com.smartwallet.budgetservice.repository.BudgetRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class BudgetService {
+
+    private final BudgetRepository budgetRepository;
+    private final BudgetMapper budgetMapper;
+
+    @Transactional
+    public BudgetResponse createBudget(
+            Long userId,
+            CreateBudgetRequest request
+    ) {
+        boolean exists =
+                budgetRepository
+                        .existsByUserIdAndCategoryIdAndYearAndMonth(
+                                userId,
+                                request.categoryId(),
+                                request.year(),
+                                request.month()
+                        );
+
+        if (exists) {
+            throw new BudgetAlreadyExistsException(
+                    request.categoryId(),
+                    request.year(),
+                    request.month()
+            );
+        }
+
+        Budget budget = Budget.builder()
+                .userId(userId)
+                .categoryId(request.categoryId())
+                .limitAmount(request.limitAmount())
+                .spentAmount(BigDecimal.ZERO)
+                .year(request.year())
+                .month(request.month())
+                .status(BudgetStatus.ACTIVE)
+                .build();
+
+        Budget savedBudget =
+                budgetRepository.save(budget);
+
+        return budgetMapper.toResponse(savedBudget);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BudgetResponse> getBudgets(Long userId) {
+        return budgetRepository
+                .findAllByUserIdOrderByYearDescMonthDesc(userId)
+                .stream()
+                .map(budgetMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public BudgetResponse getBudget(
+            Long userId,
+            Long budgetId
+    ) {
+        Budget budget = findOwnedBudget(userId, budgetId);
+
+        return budgetMapper.toResponse(budget);
+    }
+
+    @Transactional
+    public BudgetResponse updateBudget(
+            Long userId,
+            Long budgetId,
+            UpdateBudgetRequest request
+    ) {
+        Budget budget = findOwnedBudget(userId, budgetId);
+
+        budget.setLimitAmount(request.limitAmount());
+        budget.recalculateStatus();
+
+        Budget savedBudget =
+                budgetRepository.save(budget);
+
+        return budgetMapper.toResponse(savedBudget);
+    }
+
+    @Transactional
+    public void deleteBudget(
+            Long userId,
+            Long budgetId
+    ) {
+        Budget budget = findOwnedBudget(userId, budgetId);
+
+        budgetRepository.delete(budget);
+    }
+
+    private Budget findOwnedBudget(
+            Long userId,
+            Long budgetId
+    ) {
+        return budgetRepository
+                .findByIdAndUserId(budgetId, userId)
+                .orElseThrow(
+                        () -> new BudgetNotFoundException(budgetId)
+                );
+    }
+}
