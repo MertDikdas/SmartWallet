@@ -1,5 +1,7 @@
 package com.smartwallet.financeservice.service;
 
+import com.smartwallet.contracts.transaction.TransactionChangedEvent;
+import com.smartwallet.contracts.transaction.TransactionSnapshot;
 import com.smartwallet.financeservice.dto.request.CreateTransactionRequest;
 import com.smartwallet.financeservice.dto.request.UpdateTransactionRequest;
 import com.smartwallet.financeservice.dto.response.TransactionResponse;
@@ -13,6 +15,7 @@ import com.smartwallet.financeservice.repository.AccountRepository;
 import com.smartwallet.financeservice.repository.CategoryRepository;
 import com.smartwallet.financeservice.repository.FinancialTransactionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,7 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final TransactionMapper transactionMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public TransactionResponse createTransaction(
@@ -91,6 +95,12 @@ public class TransactionService {
         FinancialTransaction savedTransaction =
                 transactionRepository.save(transaction);
 
+        eventPublisher.publishEvent(
+                TransactionChangedEvent.created(
+                        toSnapshot(savedTransaction)
+                )
+        );
+
         return transactionMapper.toResponse(savedTransaction);
     }
 
@@ -138,6 +148,8 @@ public class TransactionService {
                                         transactionId
                                 )
                         );
+        TransactionSnapshot beforeSnapshot =
+                toSnapshot(transaction);
 
         Long oldAccountId =
                 transaction.getAccount().getId();
@@ -210,8 +222,19 @@ public class TransactionService {
             accountRepository.save(accounts.newAccount());
         }
 
+
         FinancialTransaction savedTransaction =
                 transactionRepository.save(transaction);
+
+        TransactionSnapshot afterSnapshot =
+                toSnapshot(savedTransaction);
+
+        eventPublisher.publishEvent(
+                TransactionChangedEvent.updated(
+                        beforeSnapshot,
+                        afterSnapshot
+                )
+        );
 
         return transactionMapper.toResponse(savedTransaction);
     }
@@ -249,9 +272,18 @@ public class TransactionService {
                 transaction.getType(),
                 transaction.getAmount()
         );
+        TransactionSnapshot beforeSnapshot =
+                toSnapshot(transaction);
 
         accountRepository.save(account);
         transactionRepository.delete(transaction);
+
+
+        eventPublisher.publishEvent(
+                TransactionChangedEvent.deleted(
+                        beforeSnapshot
+                )
+        );
     }
 
     private record AccountPair(
@@ -373,6 +405,20 @@ public class TransactionService {
         };
 
         account.setBalance(newBalance);
+    }
+
+    private TransactionSnapshot toSnapshot(
+            FinancialTransaction transaction
+    ) {
+        return new TransactionSnapshot(
+                transaction.getId(),
+                transaction.getUserId(),
+                transaction.getAccount().getId(),
+                transaction.getCategory().getId(),
+                transaction.getType().name(),
+                transaction.getAmount(),
+                transaction.getTransactionDate()
+        );
     }
 
     private String normalizeDescription(String description) {

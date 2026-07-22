@@ -49,8 +49,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    hostname: smartwallet-rabbitmq
+    container_name: smartwallet-rabbitmq
+
+    environment:
+      RABBITMQ_DEFAULT_USER: smartwallet
+      RABBITMQ_DEFAULT_PASS: smartwallet
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   auth-postgres-data:
   finance-postgres-data:
   budget-postgres-data:
+  rabbitmq-data:
