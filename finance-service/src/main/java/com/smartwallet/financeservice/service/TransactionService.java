@@ -11,6 +11,7 @@ import com.smartwallet.financeservice.exception.CategoryNotFoundException;
 import com.smartwallet.financeservice.exception.CategoryTypeMismatchException;
 import com.smartwallet.financeservice.exception.FinancialTransactionNotFoundException;
 import com.smartwallet.financeservice.mapper.TransactionMapper;
+import com.smartwallet.financeservice.outbox.OutboxEventService;
 import com.smartwallet.financeservice.repository.AccountRepository;
 import com.smartwallet.financeservice.repository.CategoryRepository;
 import com.smartwallet.financeservice.repository.FinancialTransactionRepository;
@@ -31,7 +32,7 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final TransactionMapper transactionMapper;
-    private final ApplicationEventPublisher eventPublisher;
+    private final OutboxEventService outboxEventService;
 
     @Transactional
     public TransactionResponse createTransaction(
@@ -95,7 +96,7 @@ public class TransactionService {
         FinancialTransaction savedTransaction =
                 transactionRepository.save(transaction);
 
-        eventPublisher.publishEvent(
+        outboxEventService.enqueue(
                 TransactionChangedEvent.created(
                         toSnapshot(savedTransaction)
                 )
@@ -229,7 +230,7 @@ public class TransactionService {
         TransactionSnapshot afterSnapshot =
                 toSnapshot(savedTransaction);
 
-        eventPublisher.publishEvent(
+        outboxEventService.enqueue(
                 TransactionChangedEvent.updated(
                         beforeSnapshot,
                         afterSnapshot
@@ -279,7 +280,7 @@ public class TransactionService {
         transactionRepository.delete(transaction);
 
 
-        eventPublisher.publishEvent(
+        outboxEventService.enqueue(
                 TransactionChangedEvent.deleted(
                         beforeSnapshot
                 )

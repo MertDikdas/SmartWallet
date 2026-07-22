@@ -43,3 +43,7 @@ management:
 logging:
   level:
     org.hibernate.SQL: DEBUG
+
+outbox:
+  publisher:
+    fixed-delay-ms: 2000
