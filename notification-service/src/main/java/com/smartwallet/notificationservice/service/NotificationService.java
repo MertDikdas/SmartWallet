@@ -7,6 +7,11 @@ import com.smartwallet.notificationservice.entity.Notification;
 import com.smartwallet.notificationservice.exception.NotificationNotFoundException;
 import com.smartwallet.notificationservice.mapper.NotificationMapper;
 import com.smartwallet.notificationservice.repository.NotificationRepository;
+import com.smartwallet.notificationservice.dto.response.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,24 +26,41 @@ public class NotificationService {
     private final NotificationMapper notificationMapper;
 
     @Transactional(readOnly = true)
-    public List<NotificationResponse> getNotifications(
+    public PageResponse<NotificationResponse> getNotifications(
             Long userId,
-            boolean unreadOnly
+            boolean unreadOnly,
+            int page,
+            int size
     ) {
-        List<Notification> notifications =
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(
+                                Sort.Direction.DESC,
+                                "createdAt"
+                        )
+                );
+
+        Page<Notification> notificationPage =
                 unreadOnly
                         ? notificationRepository
-                        .findAllByUserIdAndReadFalseOrderByCreatedAtDesc(
-                                userId
+                        .findAllByUserIdAndReadFalse(
+                                userId,
+                                pageable
                         )
                         : notificationRepository
-                        .findAllByUserIdOrderByCreatedAtDesc(
-                                userId
+                        .findAllByUserId(
+                                userId,
+                                pageable
                         );
 
-        return notifications.stream()
-                .map(notificationMapper::toResponse)
-                .toList();
+        Page<NotificationResponse> responsePage =
+                notificationPage.map(
+                        notificationMapper::toResponse
+                );
+
+        return PageResponse.from(responsePage);
     }
 
     @Transactional(readOnly = true)

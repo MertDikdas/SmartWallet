@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,12 +15,13 @@ import java.util.UUID;
 public interface NotificationRepository
         extends JpaRepository<Notification, Long> {
 
-    List<Notification>
-    findAllByUserIdOrderByCreatedAtDesc(Long userId);
-
-    List<Notification>
-    findAllByUserIdAndReadFalseOrderByCreatedAtDesc(
-            Long userId
+    Page<Notification> findAllByUserId(
+            Long userId,
+            Pageable pageable
+    );
+    Page<Notification> findAllByUserIdAndReadFalse(
+            Long userId,
+            Pageable pageable
     );
 
     Optional<Notification> findByIdAndUserId(
@@ -87,4 +90,6 @@ public interface NotificationRepository
     );
 
     long countByUserIdAndReadFalse(Long userId);
+
+
 }

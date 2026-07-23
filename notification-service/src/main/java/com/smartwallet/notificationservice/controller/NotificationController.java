@@ -3,6 +3,10 @@ package com.smartwallet.notificationservice.controller;
 import com.smartwallet.notificationservice.dto.response.MarkAllNotificationsReadResponse;
 import com.smartwallet.notificationservice.dto.response.NotificationResponse;
 import com.smartwallet.notificationservice.dto.response.UnreadNotificationCountResponse;
+import com.smartwallet.notificationservice.dto.response.PageResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.validation.annotation.Validated;
 import com.smartwallet.notificationservice.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
@@ -20,12 +25,36 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public ResponseEntity<List<NotificationResponse>>
+    public ResponseEntity<PageResponse<NotificationResponse>>
     getNotifications(
             @AuthenticationPrincipal Jwt jwt,
+
             @RequestParam(
                     defaultValue = "false"
-            ) boolean unreadOnly
+            )
+            boolean unreadOnly,
+
+            @RequestParam(
+                    defaultValue = "0"
+            )
+            @Min(
+                    value = 0,
+                    message = "Page cannot be negative"
+            )
+            int page,
+
+            @RequestParam(
+                    defaultValue = "20"
+            )
+            @Min(
+                    value = 1,
+                    message = "Page size must be at least 1"
+            )
+            @Max(
+                    value = 100,
+                    message = "Page size cannot exceed 100"
+            )
+            int size
     ) {
         Long userId =
                 Long.parseLong(jwt.getSubject());
@@ -33,7 +62,9 @@ public class NotificationController {
         return ResponseEntity.ok(
                 notificationService.getNotifications(
                         userId,
-                        unreadOnly
+                        unreadOnly,
+                        page,
+                        size
                 )
         );
     }
