@@ -71,6 +71,31 @@ services:
       timeout: 5s
       retries: 10
 
+  analytics-postgres:
+    image: postgres:16-alpine
+    container_name: smartwallet-analytics-postgres
+
+    environment:
+      POSTGRES_DB: smartwallet_analytics
+      POSTGRES_USER: smartwallet
+      POSTGRES_PASSWORD: smartwallet
+
+    ports:
+      - "5437:5432"
+
+    volumes:
+      - analytics-postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U smartwallet -d smartwallet_analytics"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   rabbitmq:
     image: rabbitmq:management-alpine
     hostname: smartwallet-rabbitmq
@@ -99,3 +124,4 @@ volumes:
   budget-postgres-data:
   notification-postgres-data:
   rabbitmq-data:
+  analytics-postgres-data:
