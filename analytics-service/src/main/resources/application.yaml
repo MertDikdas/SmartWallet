@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: smartwallet-analytics-service
+
+  datasource:
+    url: ${ANALYTICS_DB_URL:jdbc:postgresql://localhost:5437/smartwallet_analytics}
+    username: ${ANALYTICS_DB_USERNAME:smartwallet}
+    password: ${ANALYTICS_DB_PASSWORD:smartwallet}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:smartwallet}
+    password: ${RABBITMQ_PASSWORD:smartwallet}
+
+server:
+  port: 8085
+
+security:
+  jwt:
+    issuer: smartwallet-auth-service
+    public-key: classpath:keys/public.pem
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
