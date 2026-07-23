@@ -1,6 +1,8 @@
 package com.smartwallet.notificationservice.service;
 
+import com.smartwallet.notificationservice.dto.response.MarkAllNotificationsReadResponse;
 import com.smartwallet.notificationservice.dto.response.NotificationResponse;
+import com.smartwallet.notificationservice.dto.response.UnreadNotificationCountResponse;
 import com.smartwallet.notificationservice.entity.Notification;
 import com.smartwallet.notificationservice.exception.NotificationNotFoundException;
 import com.smartwallet.notificationservice.mapper.NotificationMapper;
@@ -84,5 +86,31 @@ public class NotificationService {
                                 notificationId
                         )
                 );
+    }
+
+    @Transactional(readOnly = true)
+    public UnreadNotificationCountResponse getUnreadCount(
+            Long userId
+    ) {
+        long unreadCount =
+                notificationRepository
+                        .countByUserIdAndReadFalse(userId);
+
+        return new UnreadNotificationCountResponse(
+                unreadCount
+        );
+    }
+
+    @Transactional
+    public MarkAllNotificationsReadResponse markAllAsRead(
+            Long userId
+    ) {
+        int updatedCount =
+                notificationRepository
+                        .markAllAsReadByUserId(userId);
+
+        return new MarkAllNotificationsReadResponse(
+                updatedCount
+        );
     }
 }

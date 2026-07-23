@@ -67,4 +67,24 @@ public interface NotificationRepository
             @Param("categoryId") Long categoryId,
             @Param("sourceEventId") UUID sourceEventId
     );
+
+    @Modifying(
+            flushAutomatically = true,
+            clearAutomatically = true
+    )
+    @Query(
+            value = """
+                UPDATE notifications
+                SET is_read = TRUE,
+                    read_at = CURRENT_TIMESTAMP
+                WHERE user_id = :userId
+                  AND is_read = FALSE
+                """,
+            nativeQuery = true
+    )
+    int markAllAsReadByUserId(
+            @Param("userId") Long userId
+    );
+
+    long countByUserIdAndReadFalse(Long userId);
 }

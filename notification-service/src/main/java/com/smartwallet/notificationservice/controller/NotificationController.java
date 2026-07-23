@@ -1,6 +1,8 @@
 package com.smartwallet.notificationservice.controller;
 
+import com.smartwallet.notificationservice.dto.response.MarkAllNotificationsReadResponse;
 import com.smartwallet.notificationservice.dto.response.NotificationResponse;
+import com.smartwallet.notificationservice.dto.response.UnreadNotificationCountResponse;
 import com.smartwallet.notificationservice.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -67,6 +69,32 @@ public class NotificationController {
                         userId,
                         notificationId
                 )
+        );
+    }
+
+    @GetMapping("/unread-count")
+    public ResponseEntity<UnreadNotificationCountResponse>
+    getUnreadCount(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        return ResponseEntity.ok(
+                notificationService.getUnreadCount(userId)
+        );
+    }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<MarkAllNotificationsReadResponse>
+    markAllAsRead(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        return ResponseEntity.ok(
+                notificationService.markAllAsRead(userId)
         );
     }
 }
