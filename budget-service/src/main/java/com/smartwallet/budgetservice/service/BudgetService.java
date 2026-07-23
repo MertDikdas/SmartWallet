@@ -8,6 +8,7 @@ import com.smartwallet.budgetservice.entity.BudgetStatus;
 import com.smartwallet.budgetservice.exception.BudgetAlreadyExistsException;
 import com.smartwallet.budgetservice.exception.BudgetNotFoundException;
 import com.smartwallet.budgetservice.mapper.BudgetMapper;
+import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
 import com.smartwallet.budgetservice.repository.BudgetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class BudgetService {
 
     private final BudgetRepository budgetRepository;
     private final BudgetMapper budgetMapper;
+    private final BudgetEventOutboxService budgetEventOutboxService;
 
     @Transactional
     public BudgetResponse createBudget(
@@ -88,8 +90,16 @@ public class BudgetService {
     ) {
         Budget budget = findOwnedBudget(userId, budgetId);
 
+        BudgetStatus previousStatus =
+                budget.getStatus();
+
         budget.setLimitAmount(request.limitAmount());
         budget.recalculateStatus();
+
+        budgetEventOutboxService.enqueueExceededIfNeeded(
+                previousStatus,
+                budget
+        );
 
         Budget savedBudget =
                 budgetRepository.save(budget);

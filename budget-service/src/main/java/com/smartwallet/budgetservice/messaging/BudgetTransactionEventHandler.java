@@ -1,6 +1,8 @@
 package com.smartwallet.budgetservice.messaging;
 
 import com.smartwallet.budgetservice.entity.Budget;
+import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
+import com.smartwallet.budgetservice.entity.BudgetStatus;
 import com.smartwallet.budgetservice.repository.BudgetRepository;
 import com.smartwallet.budgetservice.repository.ProcessedTransactionEventRepository;
 import com.smartwallet.contracts.transaction.TransactionChangedEvent;
@@ -18,6 +20,7 @@ import java.time.ZoneOffset;
 public class BudgetTransactionEventHandler {
 
     private final BudgetRepository budgetRepository;
+    private final BudgetEventOutboxService budgetEventOutboxService;
 
     private final ProcessedTransactionEventRepository
             processedEventRepository;
@@ -104,19 +107,25 @@ public class BudgetTransactionEventHandler {
             BigDecimal transactionAmount,
             BigDecimal multiplier
     ) {
+        BudgetStatus previousStatus =
+                budget.getStatus();
+
         BigDecimal difference =
                 transactionAmount.multiply(multiplier);
 
         BigDecimal newSpentAmount =
                 budget.getSpentAmount().add(difference);
 
-        // Eski event'leri olmayan transaction update/delete
-        // işlemlerinde negatif değeri engeller.
         if (newSpentAmount.signum() < 0) {
             newSpentAmount = BigDecimal.ZERO;
         }
 
         budget.setSpentAmount(newSpentAmount);
         budget.recalculateStatus();
+
+        budgetEventOutboxService.enqueueExceededIfNeeded(
+                previousStatus,
+                budget
+        );
     }
 }

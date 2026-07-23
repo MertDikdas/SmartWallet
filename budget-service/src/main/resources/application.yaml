@@ -24,6 +24,12 @@ spring:
     username: ${RABBITMQ_USERNAME:smartwallet}
     password: ${RABBITMQ_PASSWORD:smartwallet}
 
+    publisher-confirm-type: correlated
+    publisher-returns: true
+
+    template:
+      mandatory: true
+
 server:
   port: 8083
 
@@ -40,3 +46,7 @@ management:
 logging:
   level:
     org.hibernate.SQL: DEBUG
+
+outbox:
+  publisher:
+    fixed-delay-ms: 2000
