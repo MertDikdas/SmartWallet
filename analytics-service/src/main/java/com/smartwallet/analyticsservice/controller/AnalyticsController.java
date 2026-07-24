@@ -2,6 +2,7 @@ package com.smartwallet.analyticsservice.controller;
 
 import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyCategoryAnalyticsResponse;
+import com.smartwallet.analyticsservice.dto.response.MonthlyTrendResponse;
 import com.smartwallet.analyticsservice.service.AnalyticsService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -66,5 +67,27 @@ public class AnalyticsController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/monthly-trend")
+    public ResponseEntity<MonthlyTrendResponse> getMonthlyTrend(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "6")
+            @Min(
+                    value = 1,
+                    message = "Months must be at least 1"
+            )
+            @Max(
+                    value = 120,
+                    message = "Months cannot exceed 12"
+            )
+            int months
+    ){
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+        MonthlyTrendResponse response = analyticsService.getMonthlyTrend(userId, months);
+
+        return ResponseEntity.ok(response);
+
     }
 }

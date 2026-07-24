@@ -2,9 +2,8 @@ package com.smartwallet.analyticsservice.service;
 
 import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
-import com.smartwallet.analyticsservice.dto.response.CategoryExpenseResponse;
+import com.smartwallet.analyticsservice.dto.response.*;
 import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
-import com.smartwallet.analyticsservice.dto.response.MonthlyCategoryAnalyticsResponse;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.repository.TransactionProjectionRepository;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -17,6 +16,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -134,6 +134,46 @@ public class AnalyticsService {
                 categories
         );
     }
+
+    @Transactional(readOnly = true)
+    public MonthlyTrendResponse getMonthlyTrend(
+            Long userId,
+            int months
+    ) {
+        YearMonth currentMonth =
+                YearMonth.now(ZoneOffset.UTC);
+
+        List<MonthlyTrendItemResponse> trendItems =
+                new ArrayList<>();
+
+        for (int offset = months - 1; offset >= 0; offset--) {
+
+            YearMonth period =
+                    currentMonth.minusMonths(offset);
+
+            MonthlyAnalyticsResponse monthlyAnalytics =
+                    getMonthlyAnalytics(
+                            userId,
+                            period.getYear(),
+                            period.getMonthValue()
+                    );
+
+            MonthlyTrendItemResponse trendItem =
+                    new MonthlyTrendItemResponse(
+                            monthlyAnalytics.year(),
+                            monthlyAnalytics.month(),
+                            monthlyAnalytics.totalIncome(),
+                            monthlyAnalytics.totalExpense(),
+                            monthlyAnalytics.netAmount(),
+                            monthlyAnalytics.transactionCount()
+                    );
+
+            trendItems.add(trendItem);
+        }
+
+        return new MonthlyTrendResponse(trendItems);
+    }
+
     private BigDecimal calculatePercentage(
             BigDecimal categoryExpense,
             BigDecimal totalExpense
