@@ -416,6 +416,7 @@ public class TransactionService {
                 transaction.getUserId(),
                 transaction.getAccount().getId(),
                 transaction.getCategory().getId(),
+                transaction.getCategory().getName(),
                 transaction.getType().name(),
                 transaction.getAmount(),
                 transaction.getTransactionDate()

@@ -50,6 +50,7 @@ public interface TransactionProjectionRepository
     @Query("""
         SELECT new com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate(
             projection.categoryId,
+            projection.categoryName,
             SUM(projection.amount),
             COUNT(projection)
         )
@@ -58,7 +59,8 @@ public interface TransactionProjectionRepository
           AND projection.transactionType = :expenseType
           AND projection.transactionDate >= :startDate
           AND projection.transactionDate < :endDate
-        GROUP BY projection.categoryId
+        GROUP BY projection.categoryId,
+                projection.categoryName
         ORDER BY SUM(projection.amount) DESC
         """)
     List<CategoryExpenseAggregate> calculateCategoryExpenses(

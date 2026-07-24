@@ -29,6 +29,9 @@ public class TransactionProjection {
     @Column(name = "category_id", nullable = false)
     private Long categoryId;
 
+    @Column(name = "category_name", length = 255)
+    private String categoryName;
+
     @Enumerated(EnumType.STRING)
     @Column(
             name = "transaction_type",
@@ -58,6 +61,7 @@ public class TransactionProjection {
                 .userId(snapshot.userId())
                 .accountId(snapshot.accountId())
                 .categoryId(snapshot.categoryId())
+                .categoryName(snapshot.categoryName())
                 .transactionType(
                         ProjectionTransactionType.valueOf(
                                 snapshot.transactionType()

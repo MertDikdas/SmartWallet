@@ -117,6 +117,7 @@ public class AnalyticsService {
                 .map(aggregate ->
                         new CategoryExpenseResponse(
                                 aggregate.categoryId(),
+                                aggregate.categoryName(),
                                 aggregate.totalExpense(),
                                 calculatePercentage(
                                         aggregate.totalExpense(),

@@ -8,6 +8,7 @@ public record TransactionSnapshot(
         Long userId,
         Long accountId,
         Long categoryId,
+        String categoryName,
         String transactionType,
         BigDecimal amount,
         Instant transactionDate
