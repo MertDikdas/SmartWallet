@@ -2,6 +2,7 @@ package com.smartwallet.analyticsservice.controller;
 
 import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyCategoryAnalyticsResponse;
+import com.smartwallet.analyticsservice.dto.response.MonthlyComparisonResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyTrendResponse;
 import com.smartwallet.analyticsservice.service.AnalyticsService;
 import jakarta.validation.constraints.Max;
@@ -11,8 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.Year;
 
 @RestController
 @RequestMapping("/api/analytics")
@@ -89,5 +88,41 @@ public class AnalyticsController {
 
         return ResponseEntity.ok(response);
 
+    }
+
+    @GetMapping("/monthly-comparision")
+    public ResponseEntity<MonthlyComparisonResponse> getMonthlyComparison(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam
+            @Min(value = 2000)
+            int baseYear,
+
+            @RequestParam
+            @Min(value = 1)
+            @Max(value = 12)
+            int baseMonth,
+
+            @RequestParam
+            @Min(value = 2000)
+            int comparisonYear,
+
+            @RequestParam
+            @Min(value = 1)
+            @Max(value = 12)
+            int comparisonMonth
+    ){
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        MonthlyComparisonResponse monthlyComparisonResponse =
+                analyticsService.getMonthlyComparision(
+                        userId,
+                        baseYear,
+                        baseMonth,
+                        comparisonYear,
+                        comparisonMonth
+                );
+
+        return ResponseEntity.ok(monthlyComparisonResponse);
     }
 }

@@ -6,8 +6,8 @@ import com.smartwallet.analyticsservice.dto.response.*;
 import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.repository.TransactionProjectionRepository;
-import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.expression.SecurityExpressionHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +25,7 @@ public class AnalyticsService {
 
     private final TransactionProjectionRepository
             transactionProjectionRepository;
+    private final SecurityExpressionHandler securityExpressionHandler;
 
     @Transactional(readOnly = true)
     public MonthlyAnalyticsResponse getMonthlyAnalytics(
@@ -174,6 +175,63 @@ public class AnalyticsService {
         return new MonthlyTrendResponse(trendItems);
     }
 
+    @Transactional(readOnly = true)
+    public MonthlyComparisonResponse getMonthlyComparision(
+            Long userId,
+            int baseYear,
+            int baseMonth,
+            int comparisonYear,
+            int comparisonMonth
+    ){
+        YearMonth currentMonth = YearMonth.of(baseYear, baseMonth);
+        YearMonth previousMonth = YearMonth.of(comparisonYear, comparisonMonth);
+        MonthlyAnalyticsResponse currentMonthlyAnalytics =
+                getMonthlyAnalytics(
+                        userId,
+                        baseYear,
+                        baseMonth
+                );
+
+        MonthlyComparisonItemResponse currentItem = new MonthlyComparisonItemResponse(
+                baseYear,
+                baseMonth,
+                currentMonthlyAnalytics.totalIncome(),
+                currentMonthlyAnalytics.totalExpense(),
+                currentMonthlyAnalytics.netAmount()
+
+        );
+        MonthlyAnalyticsResponse previousMonthlyAnalytics =
+                getMonthlyAnalytics(
+                        userId,
+                        comparisonYear,
+                        comparisonMonth
+                );
+        MonthlyComparisonItemResponse previousItem = new MonthlyComparisonItemResponse(
+                comparisonYear,
+                comparisonMonth,
+                previousMonthlyAnalytics.totalIncome(),
+                previousMonthlyAnalytics.totalExpense(),
+                previousMonthlyAnalytics.netAmount()
+        );
+        BigDecimal incomeChangePercentage  = 
+                calculateChangePrecentage(
+                        currentMonthlyAnalytics.totalIncome(), 
+                        previousMonthlyAnalytics.totalIncome()
+                );
+        BigDecimal expenseChangePercentage = calculateChangePrecentage(
+                currentMonthlyAnalytics.totalExpense(),
+                previousMonthlyAnalytics.totalExpense()
+        );
+        
+        MonthlyComparisonResponse monthlyComparisonResponse = new MonthlyComparisonResponse(
+                currentItem,
+                previousItem,
+                incomeChangePercentage,
+                expenseChangePercentage
+        );
+        return monthlyComparisonResponse;
+    }
+
     private BigDecimal calculatePercentage(
             BigDecimal categoryExpense,
             BigDecimal totalExpense
@@ -189,5 +247,15 @@ public class AnalyticsService {
                         2,
                         RoundingMode.HALF_UP
                 );
+    }
+    
+    private BigDecimal calculateChangePrecentage(
+            BigDecimal base,
+            BigDecimal comparision
+    ){
+        if(comparision.signum() == 0){
+            return BigDecimal.ZERO;
+        }
+        return base.subtract(comparision).multiply(BigDecimal.valueOf(100)).divide(comparision, 2, RoundingMode.HALF_UP);
     }
 }
