@@ -1,5 +1,6 @@
 package com.smartwallet.analyticsservice.repository;
 
+import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.entity.TransactionProjection;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.List;
 
 public interface TransactionProjectionRepository
         extends JpaRepository<TransactionProjection, Long> {
@@ -41,6 +43,28 @@ public interface TransactionProjectionRepository
             @Param("endDate") Instant endDate,
             @Param("incomeType")
             ProjectionTransactionType incomeType,
+            @Param("expenseType")
+            ProjectionTransactionType expenseType
+    );
+
+    @Query("""
+        SELECT new com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate(
+            projection.categoryId,
+            SUM(projection.amount),
+            COUNT(projection)
+        )
+        FROM TransactionProjection projection
+        WHERE projection.userId = :userId
+          AND projection.transactionType = :expenseType
+          AND projection.transactionDate >= :startDate
+          AND projection.transactionDate < :endDate
+        GROUP BY projection.categoryId
+        ORDER BY SUM(projection.amount) DESC
+        """)
+    List<CategoryExpenseAggregate> calculateCategoryExpenses(
+            @Param("userId") Long userId,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
             @Param("expenseType")
             ProjectionTransactionType expenseType
     );
