@@ -251,11 +251,11 @@ public class AnalyticsService {
     
     private BigDecimal calculateChangePrecentage(
             BigDecimal base,
-            BigDecimal comparision
+            BigDecimal previous
     ){
-        if(comparision.signum() == 0){
+        if(previous.signum() == 0){
             return BigDecimal.ZERO;
         }
-        return base.subtract(comparision).multiply(BigDecimal.valueOf(100)).divide(comparision, 2, RoundingMode.HALF_UP);
+        return base.subtract(previous).multiply(BigDecimal.valueOf(100)).divide(previous, 2, RoundingMode.HALF_UP);
     }
 }
