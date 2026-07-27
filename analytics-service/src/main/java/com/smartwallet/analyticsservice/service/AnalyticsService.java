@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.Year;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -232,6 +233,69 @@ public class AnalyticsService {
         return monthlyComparisonResponse;
     }
 
+    @Transactional(readOnly = true)
+    public YearlyAnalyticsResponse getYearlyAnalytics(
+            Long userId,
+            int year
+    ) {
+        Year period = Year.of(year);
+
+        Instant startDate = period
+                .atDay(1)
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant();
+
+        Instant endDate = period
+                .plusYears(1)
+                .atDay(1)
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant();
+
+        MonthlyAggregate aggregate =
+                transactionProjectionRepository
+                        .calculateMonthlyAggregate(
+                                userId,
+                                startDate,
+                                endDate,
+                                ProjectionTransactionType.INCOME,
+                                ProjectionTransactionType.EXPENSE
+                        );
+
+        BigDecimal totalIncome =
+                aggregate.totalIncome() != null
+                        ? aggregate.totalIncome()
+                        : BigDecimal.ZERO;
+
+        BigDecimal totalExpense =
+                aggregate.totalExpense() != null
+                        ? aggregate.totalExpense()
+                        : BigDecimal.ZERO;
+
+        long transactionCount =
+                aggregate.transactionCount() != null
+                        ? aggregate.transactionCount()
+                        : 0L;
+
+        BigDecimal netAmount =
+                totalIncome.subtract(totalExpense);
+
+        BigDecimal averageMonthlyExpense =
+                totalExpense.divide(
+                        BigDecimal.valueOf(12),
+                        2,
+                        RoundingMode.HALF_UP
+                );
+
+        return new YearlyAnalyticsResponse(
+                year,
+                totalIncome,
+                totalExpense,
+                netAmount,
+                transactionCount,
+                averageMonthlyExpense
+        );
+    }
+
     private BigDecimal calculatePercentage(
             BigDecimal categoryExpense,
             BigDecimal totalExpense
@@ -258,4 +322,6 @@ public class AnalyticsService {
         }
         return base.subtract(previous).multiply(BigDecimal.valueOf(100)).divide(previous, 2, RoundingMode.HALF_UP);
     }
+
+
 }

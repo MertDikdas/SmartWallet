@@ -1,9 +1,7 @@
 package com.smartwallet.analyticsservice.controller;
 
+import com.smartwallet.analyticsservice.dto.response.*;
 import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
-import com.smartwallet.analyticsservice.dto.response.MonthlyCategoryAnalyticsResponse;
-import com.smartwallet.analyticsservice.dto.response.MonthlyComparisonResponse;
-import com.smartwallet.analyticsservice.dto.response.MonthlyTrendResponse;
 import com.smartwallet.analyticsservice.service.AnalyticsService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -124,5 +122,29 @@ public class AnalyticsController {
                 );
 
         return ResponseEntity.ok(monthlyComparisonResponse);
+    }
+
+    @GetMapping("/yearly")
+    public ResponseEntity<YearlyAnalyticsResponse>
+    getYearlyAnalytics(
+            @AuthenticationPrincipal Jwt jwt,
+
+            @RequestParam
+            @Min(
+                    value = 2000,
+                    message = "Year must be at least 2000"
+            )
+            int year
+    ) {
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        YearlyAnalyticsResponse response =
+                analyticsService.getYearlyAnalytics(
+                        userId,
+                        year
+                );
+
+        return ResponseEntity.ok(response);
     }
 }
