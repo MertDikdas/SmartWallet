@@ -113,7 +113,7 @@ public class AnalyticsController {
                 Long.parseLong(jwt.getSubject());
 
         MonthlyComparisonResponse monthlyComparisonResponse =
-                analyticsService.getMonthlyComparision(
+                analyticsService.getMonthlyComparison(
                         userId,
                         baseYear,
                         baseMonth,
