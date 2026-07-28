@@ -3,9 +3,9 @@ spring:
     name: smartwallet-auth-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/smartwallet_auth
-    username: smartwallet
-    password: smartwallet
+    url: ${AUTH_DB_URL:jdbc:postgresql://localhost:5433/smartwallet_auth}
+    username: ${AUTH_DB_USERNAME:smartwallet}
+    password: ${AUTH_DB_PASSWORD:smartwallet}
     driver-class-name: org.postgresql.Driver
 
   jpa:

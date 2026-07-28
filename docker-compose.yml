@@ -162,6 +162,200 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+
+    container_name: smartwallet-auth-service
+    restart: unless-stopped
+
+    environment:
+      AUTH_DB_URL: jdbc:postgresql://auth-postgres:5432/smartwallet_auth
+      AUTH_DB_USERNAME: smartwallet
+      AUTH_DB_PASSWORD: smartwallet
+
+    ports:
+      - "8081:8081"
+
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8081/actuator/health | grep -q '\"status\":\"UP\"'"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  finance-service:
+    build:
+      context: ./finance-service
+      dockerfile: Dockerfile
+
+    container_name: smartwallet-finance-service
+    restart: unless-stopped
+
+    environment:
+      FINANCE_DB_URL: jdbc:postgresql://finance-postgres:5432/smartwallet_finance
+      FINANCE_DB_USERNAME: smartwallet
+      FINANCE_DB_PASSWORD: smartwallet
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smartwallet
+      RABBITMQ_PASSWORD: smartwallet
+
+    ports:
+      - "8082:8082"
+
+    depends_on:
+      finance-postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8082/actuator/health | grep -q '\"status\":\"UP\"'"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  budget-service:
+    build:
+      context: ./budget-service
+      dockerfile: Dockerfile
+
+    container_name: smartwallet-budget-service
+    restart: unless-stopped
+
+    environment:
+      BUDGET_DB_URL: jdbc:postgresql://budget-postgres:5432/smartwallet_budget
+      BUDGET_DB_USERNAME: smartwallet
+      BUDGET_DB_PASSWORD: smartwallet
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smartwallet
+      RABBITMQ_PASSWORD: smartwallet
+
+    ports:
+      - "8083:8083"
+
+    depends_on:
+      budget-postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8083/actuator/health | grep -q '\"status\":\"UP\"'"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+
+    container_name: smartwallet-notification-service
+    restart: unless-stopped
+
+    environment:
+      NOTIFICATION_DB_URL: jdbc:postgresql://notification-postgres:5432/smartwallet_notification
+      NOTIFICATION_DB_USERNAME: smartwallet
+      NOTIFICATION_DB_PASSWORD: smartwallet
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smartwallet
+      RABBITMQ_PASSWORD: smartwallet
+
+    ports:
+      - "8084:8084"
+
+    depends_on:
+      notification-postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8084/actuator/health | grep -q '\"status\":\"UP\"'"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+
+    container_name: smartwallet-api-gateway
+    restart: unless-stopped
+
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8081
+      FINANCE_SERVICE_URL: http://finance-service:8082
+      BUDGET_SERVICE_URL: http://budget-service:8083
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+      ANALYTICS_SERVICE_URL: http://analytics-service:8085
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      auth-service:
+        condition: service_healthy
+
+      finance-service:
+        condition: service_healthy
+
+      budget-service:
+        condition: service_healthy
+
+      notification-service:
+        condition: service_healthy
+
+      analytics-service:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
 volumes:
   auth-postgres-data:
   finance-postgres-data:
