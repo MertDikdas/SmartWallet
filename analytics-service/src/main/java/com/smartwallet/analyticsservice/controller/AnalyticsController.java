@@ -88,7 +88,7 @@ public class AnalyticsController {
 
     }
 
-    @GetMapping("/monthly-comparision")
+    @GetMapping("/monthly-comparison")
     public ResponseEntity<MonthlyComparisonResponse> getMonthlyComparison(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam
