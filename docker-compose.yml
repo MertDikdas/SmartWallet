@@ -113,11 +113,55 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
 
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test:
+        [
+          "CMD",
+          "rabbitmq-diagnostics",
+          "-q",
+          "ping"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  analytics-service:
+    build:
+      context: ./analytics-service
+      dockerfile: Dockerfile
+
+    container_name: smartwallet-analytics-service
+    restart: unless-stopped
+
+    environment:
+      ANALYTICS_DB_URL: jdbc:postgresql://analytics-postgres:5432/smartwallet_analytics
+      ANALYTICS_DB_USERNAME: smartwallet
+      ANALYTICS_DB_PASSWORD: smartwallet
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smartwallet
+      RABBITMQ_PASSWORD: smartwallet
+
+    ports:
+      - "8085:8085"
+
+    depends_on:
+      analytics-postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8085/actuator/health | grep -q '\"status\":\"UP\"'"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 volumes:
   auth-postgres-data:
   finance-postgres-data:
