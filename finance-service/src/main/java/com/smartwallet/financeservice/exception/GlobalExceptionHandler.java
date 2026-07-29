@@ -63,6 +63,7 @@ public class GlobalExceptionHandler {
                 .body(error);
     }
 
+    @ExceptionHandler(CategoryNotFoundException.class)
     public ResponseEntity<ApiError> handleCategoryNotFound(
             CategoryNotFoundException exception,
             HttpServletRequest request

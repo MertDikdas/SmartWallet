@@ -54,6 +54,7 @@ jobs:
           mkdir -p budget-service/src/main/resources/keys
           mkdir -p notification-service/src/main/resources/keys
           mkdir -p analytics-service/src/main/resources/keys
+          mkdir -p api-gateway/src/main/resources/keys
 
           cp /tmp/private.pem \
             auth-service/src/main/resources/keys/private.pem
@@ -72,6 +73,9 @@ jobs:
 
           cp /tmp/public.pem \
             analytics-service/src/main/resources/keys/public.pem
+
+          cp /tmp/public.pem \
+            api-gateway/src/main/resources/keys/public.pem
 
       - name: Make Maven Wrapper executable
         run: chmod +x "${{ matrix.service }}/mvnw"
@@ -137,6 +141,7 @@ jobs:
           mkdir -p budget-service/src/main/resources/keys
           mkdir -p notification-service/src/main/resources/keys
           mkdir -p analytics-service/src/main/resources/keys
+          mkdir -p api-gateway/src/main/resources/keys
 
           cp /tmp/private.pem \
             auth-service/src/main/resources/keys/private.pem
@@ -155,6 +160,9 @@ jobs:
 
           cp /tmp/public.pem \
             analytics-service/src/main/resources/keys/public.pem
+
+          cp /tmp/public.pem \
+            api-gateway/src/main/resources/keys/public.pem
 
       - name: Start SmartWallet stack
         run: |
@@ -205,6 +213,10 @@ jobs:
 
           check_health "Analytics Service" \
             "http://localhost:8085/actuator/health"
+
+      - name: Run end-to-end flow
+        shell: bash
+        run: bash scripts/e2e-test.sh
 
       - name: Show container status
         if: always()
