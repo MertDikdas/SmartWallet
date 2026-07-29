@@ -78,3 +78,5 @@ spring-shell.log
 
 # private key
 **/src/main/resources/keys/private.pem
+**/src/main/resources/keys/public.pem
+/secrets/
