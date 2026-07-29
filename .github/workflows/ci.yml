@@ -104,19 +104,22 @@ jobs:
         shell: bash
         run: |
           mkdir -p secrets/jwt
-
+          
           openssl genpkey \
             -algorithm RSA \
             -pkeyopt rsa_keygen_bits:2048 \
             -out secrets/jwt/private.pem
-
+          
           openssl rsa \
             -pubout \
             -in secrets/jwt/private.pem \
             -out secrets/jwt/public.pem
-
-          chmod 600 secrets/jwt/private.pem
-          chmod 644 secrets/jwt/public.pem
+          
+          chmod 0644 secrets/jwt/private.pem
+          chmod 0644 secrets/jwt/public.pem
+          
+          echo "Generated CI key permissions:"
+          ls -ln secrets/jwt
 
       - name: Start SmartWallet stack
         run: |
