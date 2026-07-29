@@ -45,4 +45,19 @@ public class CategoryController {
                 categoryService.getCategories(userId)
         );
     }
+
+    @GetMapping("/{categoryId}")
+    public ResponseEntity<CategoryResponse> getCategoryById(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long categoryId
+    ) {
+        Long userId = Long.valueOf(jwt.getSubject());
+
+        return ResponseEntity.ok(
+                categoryService.getCategoryById(
+                        userId,
+                        categoryId
+                )
+        );
+    }
 }

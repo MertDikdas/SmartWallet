@@ -29,7 +29,11 @@ public class BudgetController {
         Long userId = Long.parseLong(jwt.getSubject());
 
         BudgetResponse response =
-                budgetService.createBudget(userId, request);
+                budgetService.createBudget(
+                        userId,
+                        jwt.getTokenValue(),
+                        request
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

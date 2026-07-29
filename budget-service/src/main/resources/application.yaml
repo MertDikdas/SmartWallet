@@ -50,3 +50,7 @@ logging:
 outbox:
   publisher:
     fixed-delay-ms: 2000
+
+services:
+  finance:
+    base-url: ${FINANCE_SERVICE_URL:http://localhost:8082}

@@ -251,6 +251,8 @@ services:
       RABBITMQ_USERNAME: smartwallet
       RABBITMQ_PASSWORD: smartwallet
 
+      FINANCE_SERVICE_URL: http://finance-service:8082
+
     ports:
       - "8083:8083"
 

@@ -78,6 +78,22 @@ public class GlobalExceptionHandler {
                 .body(error);
     }
 
+    @ExceptionHandler(InvalidBudgetCategoryException.class)
+    public ResponseEntity<ApiError> handleInvalidBudgetCategory(
+            InvalidBudgetCategoryException exception,
+            HttpServletRequest request
+    ) {
+        ApiError error = createError(
+                HttpStatus.BAD_REQUEST,
+                exception.getMessage(),
+                request,
+                Map.of()
+        );
+        return ResponseEntity
+                .badRequest()
+                .body(error);
+    }
+
     private ApiError createError(
             HttpStatus status,
             String message,

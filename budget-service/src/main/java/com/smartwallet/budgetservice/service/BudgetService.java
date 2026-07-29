@@ -1,5 +1,7 @@
 package com.smartwallet.budgetservice.service;
 
+import com.smartwallet.budgetservice.client.CategoryClient;
+import com.smartwallet.budgetservice.client.dto.CategoryDetailsResponse;
 import com.smartwallet.budgetservice.dto.request.CreateBudgetRequest;
 import com.smartwallet.budgetservice.dto.request.UpdateBudgetRequest;
 import com.smartwallet.budgetservice.dto.response.BudgetResponse;
@@ -7,16 +9,20 @@ import com.smartwallet.budgetservice.entity.Budget;
 import com.smartwallet.budgetservice.entity.BudgetStatus;
 import com.smartwallet.budgetservice.exception.BudgetAlreadyExistsException;
 import com.smartwallet.budgetservice.exception.BudgetNotFoundException;
+import com.smartwallet.budgetservice.exception.InvalidBudgetCategoryException;
 import com.smartwallet.budgetservice.mapper.BudgetMapper;
 import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
 import com.smartwallet.budgetservice.repository.BudgetRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BudgetService {
@@ -24,12 +30,27 @@ public class BudgetService {
     private final BudgetRepository budgetRepository;
     private final BudgetMapper budgetMapper;
     private final BudgetEventOutboxService budgetEventOutboxService;
+    private final CategoryClient categoryClient;
 
     @Transactional
     public BudgetResponse createBudget(
             Long userId,
+            String accessToken,
             CreateBudgetRequest request
     ) {
+        CategoryDetailsResponse category =
+                categoryClient.getOwnedCategory(
+                        request.categoryId(),
+                        accessToken
+                );
+
+        if (!"EXPENSE".equals(category.type())) {
+
+            throw new InvalidBudgetCategoryException(
+                    request.categoryId()
+            );
+        }
+
         boolean exists =
                 budgetRepository
                         .existsByUserIdAndCategoryIdAndYearAndMonth(

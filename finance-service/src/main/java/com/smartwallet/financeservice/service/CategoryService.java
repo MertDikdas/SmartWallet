@@ -4,6 +4,7 @@ import com.smartwallet.financeservice.dto.request.CreateCategoryRequest;
 import com.smartwallet.financeservice.dto.response.CategoryResponse;
 import com.smartwallet.financeservice.entity.Category;
 import com.smartwallet.financeservice.exception.CategoryAlreadyExistsException;
+import com.smartwallet.financeservice.exception.CategoryNotFoundException;
 import com.smartwallet.financeservice.mapper.CategoryMapper;
 import com.smartwallet.financeservice.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -59,5 +60,19 @@ public class CategoryService {
                 .stream()
                 .map(categoryMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CategoryResponse getCategoryById(
+            Long userId,
+            Long categoryId
+    ) {
+        Category category = categoryRepository
+                .findByIdAndUserId(categoryId, userId)
+                .orElseThrow(
+                        () -> new CategoryNotFoundException(categoryId)
+                );
+
+        return categoryMapper.toResponse(category);
     }
 }
