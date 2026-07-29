@@ -49,39 +49,16 @@ jobs:
             -in /tmp/private.pem \
             -out /tmp/public.pem
 
-          mkdir -p auth-service/src/main/resources/keys
-          mkdir -p finance-service/src/main/resources/keys
-          mkdir -p budget-service/src/main/resources/keys
-          mkdir -p notification-service/src/main/resources/keys
-          mkdir -p analytics-service/src/main/resources/keys
-          mkdir -p api-gateway/src/main/resources/keys
-
-          cp /tmp/private.pem \
-            auth-service/src/main/resources/keys/private.pem
-
-          cp /tmp/public.pem \
-            auth-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            finance-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            budget-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            notification-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            analytics-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            api-gateway/src/main/resources/keys/public.pem
-
       - name: Make Maven Wrapper executable
         run: chmod +x "${{ matrix.service }}/mvnw"
 
       - name: Build and test service
         working-directory: ${{ matrix.service }}
+
+        env:
+          JWT_PRIVATE_KEY_LOCATION: file:/tmp/private.pem
+          JWT_PUBLIC_KEY_LOCATION: file:/tmp/public.pem
+
         run: ./mvnw --batch-mode --no-transfer-progress clean verify
 
   validate-compose:
@@ -126,43 +103,23 @@ jobs:
       - name: Generate temporary RSA keys
         shell: bash
         run: |
+          mkdir -p secrets/jwt
+          
           openssl genpkey \
             -algorithm RSA \
             -pkeyopt rsa_keygen_bits:2048 \
-            -out /tmp/private.pem
-
+            -out secrets/jwt/private.pem
+          
           openssl rsa \
             -pubout \
-            -in /tmp/private.pem \
-            -out /tmp/public.pem
-
-          mkdir -p auth-service/src/main/resources/keys
-          mkdir -p finance-service/src/main/resources/keys
-          mkdir -p budget-service/src/main/resources/keys
-          mkdir -p notification-service/src/main/resources/keys
-          mkdir -p analytics-service/src/main/resources/keys
-          mkdir -p api-gateway/src/main/resources/keys
-
-          cp /tmp/private.pem \
-            auth-service/src/main/resources/keys/private.pem
-
-          cp /tmp/public.pem \
-            auth-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            finance-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            budget-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            notification-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            analytics-service/src/main/resources/keys/public.pem
-
-          cp /tmp/public.pem \
-            api-gateway/src/main/resources/keys/public.pem
+            -in secrets/jwt/private.pem \
+            -out secrets/jwt/public.pem
+          
+          chmod 0644 secrets/jwt/private.pem
+          chmod 0644 secrets/jwt/public.pem
+          
+          echo "Generated CI key permissions:"
+          ls -ln secrets/jwt
 
       - name: Start SmartWallet stack
         run: |

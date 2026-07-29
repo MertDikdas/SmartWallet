@@ -37,7 +37,7 @@ security:
   jwt:
     issuer: smartwallet-auth-service
     access-token-ttl: PT15M
-    private-key: classpath:keys/private.pem
-    public-key: classpath:keys/public.pem
+    private-key: ${JWT_PRIVATE_KEY_LOCATION:classpath:keys/private.pem}
+    public-key: ${JWT_PUBLIC_KEY_LOCATION:classpath:keys/public.pem}
   refresh-token:
     ttl: P7D
