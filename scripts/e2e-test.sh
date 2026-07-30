@@ -157,6 +157,49 @@ sys.exit(0 if found else 1)
 PY
 }
 
+transaction_page_contains() {
+  local json="$1"
+  local transaction_id="$2"
+  local account_id="$3"
+  local category_id="$4"
+
+  JSON_INPUT="$json" python3 - \
+    "$transaction_id" \
+    "$account_id" \
+    "$category_id" <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["JSON_INPUT"])
+
+transaction_id = int(sys.argv[1])
+account_id = int(sys.argv[2])
+category_id = int(sys.argv[3])
+
+content = data.get("content", [])
+
+transaction_found = any(
+    item.get("id") == transaction_id
+    and item.get("accountId") == account_id
+    and item.get("categoryId") == category_id
+    and item.get("type") == "EXPENSE"
+    for item in content
+)
+
+pagination_valid = (
+    data.get("page") == 0
+    and data.get("size") == 10
+    and data.get("totalElements", 0) >= 1
+)
+
+sys.exit(
+    0 if transaction_found and pagination_valid else 1
+)
+PY
+}
+
+
 require_command curl
 require_command python3
 
@@ -255,6 +298,33 @@ request POST "/api/transactions" 201 "{
 }" "$PRIMARY_TOKEN"
 TRANSACTION_ID="$(json_get "$HTTP_BODY" "id")"
 echo "Transaction id: ${TRANSACTION_ID}"
+
+log "Verifying transaction filtering and pagination"
+
+request GET \
+  "/api/transactions?type=EXPENSE&accountId=${ACCOUNT_ID}&categoryId=${CATEGORY_ID}&page=0&size=10" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+transaction_page_contains \
+  "$HTTP_BODY" \
+  "$TRANSACTION_ID" \
+  "$ACCOUNT_ID" \
+  "$CATEGORY_ID" \
+  || fail "Filtered transaction page is incorrect: ${HTTP_BODY}"
+
+echo "Transaction filtering and pagination are correct"
+
+log "Verifying invalid transaction date range rejection"
+
+request GET \
+  "/api/transactions?startDate=2026-08-01T00:00:00Z&endDate=2026-07-01T00:00:00Z&page=0&size=10" \
+  400 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+echo "Invalid transaction date range correctly rejected"
 
 log "Verifying synchronous account balance update"
 request GET "/api/accounts/${ACCOUNT_ID}" 200 "" "$PRIMARY_TOKEN"

@@ -1,7 +1,9 @@
 package com.smartwallet.financeservice.controller;
 
 import com.smartwallet.financeservice.dto.request.CreateTransactionRequest;
+import com.smartwallet.financeservice.dto.request.TransactionFilterRequest;
 import com.smartwallet.financeservice.dto.request.UpdateTransactionRequest;
+import com.smartwallet.financeservice.dto.response.PageResponse;
 import com.smartwallet.financeservice.dto.response.TransactionResponse;
 import com.smartwallet.financeservice.service.TransactionService;
 import jakarta.validation.Valid;
@@ -36,28 +38,18 @@ public class TransactionController {
                 .body(response);
     }
 
+
     @GetMapping
-    public ResponseEntity<List<TransactionResponse>> getTransactions(
-            @AuthenticationPrincipal Jwt jwt
-    ) {
-        Long userId = Long.parseLong(jwt.getSubject());
-
-        return ResponseEntity.ok(
-                transactionService.getTransactions(userId)
-        );
-    }
-
-    @GetMapping("/{transactionId}")
-    public ResponseEntity<TransactionResponse> getTransaction(
+    public ResponseEntity<PageResponse<TransactionResponse>> getTransactions(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long transactionId
+            @Valid @ModelAttribute TransactionFilterRequest filter
     ) {
         Long userId = Long.parseLong(jwt.getSubject());
 
         return ResponseEntity.ok(
-                transactionService.getTransaction(
+                transactionService.getTransactions(
                         userId,
-                        transactionId
+                        filter
                 )
         );
     }
