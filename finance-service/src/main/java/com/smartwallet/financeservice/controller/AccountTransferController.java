@@ -1,6 +1,8 @@
 package com.smartwallet.financeservice.controller;
 
 import com.smartwallet.financeservice.dto.request.CreateTransferRequest;
+import com.smartwallet.financeservice.dto.request.TransferFilterRequest;
+import com.smartwallet.financeservice.dto.response.PageResponse;
 import com.smartwallet.financeservice.dto.response.TransferResponse;
 import com.smartwallet.financeservice.service.AccountTransferService;
 import jakarta.validation.Valid;
@@ -10,10 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/transfers")
@@ -38,6 +37,22 @@ public class AccountTransferController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<PageResponse<TransferResponse>> getTransfers(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @ModelAttribute TransferFilterRequest filter
+    ) {
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        return ResponseEntity.ok(
+                accountTransferService.getTransfers(
+                        userId,
+                        filter
+                )
+        );
     }
 
 }

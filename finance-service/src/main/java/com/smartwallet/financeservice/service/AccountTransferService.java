@@ -1,6 +1,8 @@
 package com.smartwallet.financeservice.service;
 
 import com.smartwallet.financeservice.dto.request.CreateTransferRequest;
+import com.smartwallet.financeservice.dto.request.TransferFilterRequest;
+import com.smartwallet.financeservice.dto.response.PageResponse;
 import com.smartwallet.financeservice.dto.response.TransferResponse;
 import com.smartwallet.financeservice.entity.Account;
 import com.smartwallet.financeservice.entity.AccountTransfer;
@@ -11,11 +13,17 @@ import com.smartwallet.financeservice.exception.TransferCurrencyMismatchExceptio
 import com.smartwallet.financeservice.mapper.AccountTransferMapper;
 import com.smartwallet.financeservice.repository.AccountRepository;
 import com.smartwallet.financeservice.repository.AccountTransferRepository;
+import com.smartwallet.financeservice.specification.AccountTransferSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -88,6 +96,39 @@ public class AccountTransferService {
                 transferRepository.save(transfer);
 
         return transferMapper.toResponse(savedTransfer);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<TransferResponse> getTransfers(
+            Long userId,
+            TransferFilterRequest filter
+    ){
+        Pageable pageable = PageRequest.of(
+                filter.resolvedPage(),
+                filter.resolvedSize(),
+                Sort.by(
+                        Sort.Direction.DESC,
+                        "transferredAt"
+                ).and(
+                        Sort.by(
+                                Sort.Direction.DESC,
+                                "id"
+                        )
+                )
+        );
+
+        Page<TransferResponse> transferPage =
+                transferRepository.findAll(
+                        AccountTransferSpecification
+                                .withFilters(
+                                        userId,
+                                        filter
+                                ),
+                        pageable
+                ).map(
+                        transferMapper::toResponse
+                );
+        return PageResponse.from(transferPage);
     }
 
     private AccountPair lockAccounts(
