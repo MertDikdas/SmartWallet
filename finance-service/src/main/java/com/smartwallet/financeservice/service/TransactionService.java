@@ -144,7 +144,6 @@ public class TransactionService {
         return PageResponse.from(transactionPage);
     }
 
-
     @Transactional
     public TransactionResponse updateTransaction(
             Long userId,

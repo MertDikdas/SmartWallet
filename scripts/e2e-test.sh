@@ -241,6 +241,22 @@ request POST "/api/accounts" 201 "{
 ACCOUNT_ID="$(json_get "$HTTP_BODY" "id")"
 echo "Account id: ${ACCOUNT_ID}"
 
+log "Creating destination cash account"
+
+request POST "/api/accounts" 201 "{
+  \"name\": \"E2E Cash Account ${RUN_SUFFIX}\",
+  \"type\": \"CASH\",
+  \"currency\": \"TRY\",
+  \"initialBalance\": 200.00
+}" "$PRIMARY_TOKEN"
+
+DESTINATION_ACCOUNT_ID="$(json_get "$HTTP_BODY" "id")"
+
+[[ -n "$DESTINATION_ACCOUNT_ID" ]] \
+  || fail "Destination account id is empty"
+
+echo "Destination account id: ${DESTINATION_ACCOUNT_ID}"
+
 log "Creating expense category"
 request POST "/api/categories" 201 "{
   \"name\": \"E2E Food ${RUN_SUFFIX}\",
@@ -331,6 +347,103 @@ request GET "/api/accounts/${ACCOUNT_ID}" 200 "" "$PRIMARY_TOKEN"
 json_decimal_equals "$HTTP_BODY" "balance" "850.00" \
   || fail "Expected account balance 850.00, response: ${HTTP_BODY}"
 echo "Account balance is correct"
+
+log "Transferring money between owned accounts"
+
+request POST "/api/transfers" 201 "{
+  \"fromAccountId\": ${ACCOUNT_ID},
+  \"toAccountId\": ${DESTINATION_ACCOUNT_ID},
+  \"amount\": 300.00,
+  \"description\": \"SmartWallet CI account transfer\"
+}" "$PRIMARY_TOKEN"
+
+TRANSFER_ID="$(json_get "$HTTP_BODY" "id")"
+TRANSFER_FROM_ACCOUNT_ID="$(json_get "$HTTP_BODY" "fromAccountId")"
+TRANSFER_TO_ACCOUNT_ID="$(json_get "$HTTP_BODY" "toAccountId")"
+
+[[ -n "$TRANSFER_ID" ]] \
+  || fail "Transfer id is empty"
+
+[[ "$TRANSFER_FROM_ACCOUNT_ID" == "$ACCOUNT_ID" ]] \
+  || fail "Transfer source account is incorrect: ${HTTP_BODY}"
+
+[[ "$TRANSFER_TO_ACCOUNT_ID" == "$DESTINATION_ACCOUNT_ID" ]] \
+  || fail "Transfer destination account is incorrect: ${HTTP_BODY}"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "amount" \
+  "300.00" \
+  || fail "Transfer amount is incorrect: ${HTTP_BODY}"
+
+echo "Transfer id: ${TRANSFER_ID}"
+
+log "Verifying account balances after transfer"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "balance" \
+  "550.00" \
+  || fail "Source account balance is incorrect after transfer: ${HTTP_BODY}"
+
+request GET \
+  "/api/accounts/${DESTINATION_ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "balance" \
+  "500.00" \
+  || fail "Destination account balance is incorrect after transfer: ${HTTP_BODY}"
+
+echo "Transfer balances are correct"
+
+log "Verifying insufficient balance rejection"
+
+request POST "/api/transfers" 409 "{
+  \"fromAccountId\": ${ACCOUNT_ID},
+  \"toAccountId\": ${DESTINATION_ACCOUNT_ID},
+  \"amount\": 10000.00,
+  \"description\": \"This transfer must fail\"
+}" "$PRIMARY_TOKEN"
+
+echo "Insufficient balance correctly rejected"
+
+log "Verifying balances remained unchanged after rejected transfer"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "balance" \
+  "550.00" \
+  || fail "Source balance changed after rejected transfer: ${HTTP_BODY}"
+
+request GET \
+  "/api/accounts/${DESTINATION_ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "balance" \
+  "500.00" \
+  || fail "Destination balance changed after rejected transfer: ${HTTP_BODY}"
+
+echo "Rejected transfer did not modify balances"
 
 log "Waiting for Budget Service to consume the transaction event"
 BUDGET_READY=false
