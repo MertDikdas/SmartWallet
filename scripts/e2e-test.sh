@@ -199,6 +199,50 @@ sys.exit(
 PY
 }
 
+transfer_page_contains() {
+  local json="$1"
+  local transfer_id="$2"
+  local from_account_id="$3"
+  local to_account_id="$4"
+  local expected_size="$5"
+
+  JSON_INPUT="$json" python3 - \
+    "$transfer_id" \
+    "$from_account_id" \
+    "$to_account_id" \
+    "$expected_size" <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["JSON_INPUT"])
+
+transfer_id = int(sys.argv[1])
+from_account_id = int(sys.argv[2])
+to_account_id = int(sys.argv[3])
+expected_size = int(sys.argv[4])
+
+content = data.get("content", [])
+
+transfer_found = any(
+    item.get("id") == transfer_id
+    and item.get("fromAccountId") == from_account_id
+    and item.get("toAccountId") == to_account_id
+    and str(item.get("amount")) in ("300.0", "300.00")
+    for item in content
+)
+
+pagination_valid = (
+    data.get("page") == 0
+    and data.get("size") == expected_size
+    and data.get("totalElements", 0) >= 1
+)
+
+sys.exit(
+    0 if transfer_found and pagination_valid else 1
+)
+PY
+}
 
 require_command curl
 require_command python3
@@ -377,6 +421,52 @@ json_decimal_equals \
   || fail "Transfer amount is incorrect: ${HTTP_BODY}"
 
 echo "Transfer id: ${TRANSFER_ID}"
+
+log "Verifying transfer history filtering and pagination"
+
+request GET \
+  "/api/transfers?accountId=${ACCOUNT_ID}&page=0&size=10" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+transfer_page_contains \
+  "$HTTP_BODY" \
+  "$TRANSFER_ID" \
+  "$ACCOUNT_ID" \
+  "$DESTINATION_ACCOUNT_ID" \
+  "10" \
+  || fail "Transfer history response is incorrect: ${HTTP_BODY}"
+
+echo "Transfer history filtering and pagination are correct"
+
+log "Verifying destination account transfer filtering"
+
+request GET \
+  "/api/transfers?accountId=${DESTINATION_ACCOUNT_ID}&page=0&size=10" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+transfer_page_contains \
+  "$HTTP_BODY" \
+  "$TRANSFER_ID" \
+  "$ACCOUNT_ID" \
+  "$DESTINATION_ACCOUNT_ID" \
+  "10" \
+  || fail "Destination account transfer filter is incorrect: ${HTTP_BODY}"
+
+echo "Destination account transfer filtering is correct"
+
+log "Verifying invalid transfer date range rejection"
+
+request GET \
+  "/api/transfers?startDate=2026-08-01T00:00:00Z&endDate=2026-07-01T00:00:00Z&page=0&size=10" \
+  400 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+echo "Invalid transfer date range correctly rejected"
 
 log "Verifying account balances after transfer"
 
