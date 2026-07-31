@@ -28,6 +28,7 @@ request() {
   local expected_status="$3"
   local body="${4:-}"
   local token="${5:-}"
+  local idempotency_key="${6:-}"
   local response_file
   local status
 
@@ -44,6 +45,12 @@ request() {
 
   if [[ -n "$token" ]]; then
     args+=(--header "Authorization: Bearer $token")
+  fi
+
+  if [[ -n "$idempotency_key" ]]; then
+    args+=(
+      --header "Idempotency-Key: $idempotency_key"
+    )
   fi
 
   if [[ -n "$body" ]]; then
@@ -252,6 +259,8 @@ MONTH_PADDED="$(date -u +%m)"
 MONTH="$((10#$MONTH_PADDED))"
 TRANSACTION_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 RUN_SUFFIX="${GITHUB_RUN_ID:-local}-$(date +%s)-${RANDOM}"
+TRANSFER_IDEMPOTENCY_KEY="transfer-${RUN_SUFFIX}"
+FAILED_TRANSFER_IDEMPOTENCY_KEY="failed-transfer-${RUN_SUFFIX}"
 
 PRIMARY_EMAIL="e2e-primary-${RUN_SUFFIX}@smartwallet.test"
 SECONDARY_EMAIL="e2e-secondary-${RUN_SUFFIX}@smartwallet.test"
@@ -394,12 +403,19 @@ echo "Account balance is correct"
 
 log "Transferring money between owned accounts"
 
-request POST "/api/transfers" 201 "{
+TRANSFER_REQUEST_BODY="{
   \"fromAccountId\": ${ACCOUNT_ID},
   \"toAccountId\": ${DESTINATION_ACCOUNT_ID},
   \"amount\": 300.00,
   \"description\": \"SmartWallet CI account transfer\"
-}" "$PRIMARY_TOKEN"
+}"
+
+request POST \
+  "/api/transfers" \
+  201 \
+  "$TRANSFER_REQUEST_BODY" \
+  "$PRIMARY_TOKEN" \
+  "$TRANSFER_IDEMPOTENCY_KEY"
 
 TRANSFER_ID="$(json_get "$HTTP_BODY" "id")"
 TRANSFER_FROM_ACCOUNT_ID="$(json_get "$HTTP_BODY" "fromAccountId")"
@@ -414,13 +430,148 @@ TRANSFER_TO_ACCOUNT_ID="$(json_get "$HTTP_BODY" "toAccountId")"
 [[ "$TRANSFER_TO_ACCOUNT_ID" == "$DESTINATION_ACCOUNT_ID" ]] \
   || fail "Transfer destination account is incorrect: ${HTTP_BODY}"
 
-json_decimal_equals \
-  "$HTTP_BODY" \
-  "amount" \
-  "300.00" \
+json_decimal_equals "$HTTP_BODY" "amount" "300.00" \
   || fail "Transfer amount is incorrect: ${HTTP_BODY}"
 
 echo "Transfer id: ${TRANSFER_ID}"
+
+log "Retrying transfer with the same idempotency key"
+
+request POST \
+  "/api/transfers" \
+  201 \
+  "$TRANSFER_REQUEST_BODY" \
+  "$PRIMARY_TOKEN" \
+  "$TRANSFER_IDEMPOTENCY_KEY"
+
+REPLAYED_TRANSFER_ID="$(json_get "$HTTP_BODY" "id")"
+
+[[ "$REPLAYED_TRANSFER_ID" == "$TRANSFER_ID" ]] \
+  || fail "Idempotent retry returned a different transfer: ${HTTP_BODY}"
+
+echo "Idempotent retry returned the original transfer"
+
+log "Verifying that idempotent retry did not change balances twice"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals "$HTTP_BODY" "balance" "550.00" \
+  || fail "Source balance changed during idempotent retry: ${HTTP_BODY}"
+
+request GET \
+  "/api/accounts/${DESTINATION_ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals "$HTTP_BODY" "balance" "500.00" \
+  || fail "Destination balance changed during idempotent retry: ${HTTP_BODY}"
+
+echo "Idempotent retry did not change account balances twice"
+
+log "Verifying idempotency conflict for different transfer data"
+
+request POST \
+  "/api/transfers" \
+  409 \
+  "{
+    \"fromAccountId\": ${ACCOUNT_ID},
+    \"toAccountId\": ${DESTINATION_ACCOUNT_ID},
+    \"amount\": 250.00,
+    \"description\": \"SmartWallet CI account transfer\"
+  }" \
+  "$PRIMARY_TOKEN" \
+  "$TRANSFER_IDEMPOTENCY_KEY"
+
+echo "Different transfer data with the same key was correctly rejected"
+
+log "Verifying idempotency conflict did not modify balances"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals "$HTTP_BODY" "balance" "550.00" \
+  || fail "Source balance changed after idempotency conflict: ${HTTP_BODY}"
+
+request GET \
+  "/api/accounts/${DESTINATION_ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals "$HTTP_BODY" "balance" "500.00" \
+  || fail "Destination balance changed after idempotency conflict: ${HTTP_BODY}"
+
+echo "Idempotency conflict did not modify balances"
+
+log "Creating a failed transfer with a reusable idempotency key"
+
+request POST \
+  "/api/transfers" \
+  409 \
+  "{
+    \"fromAccountId\": ${ACCOUNT_ID},
+    \"toAccountId\": ${DESTINATION_ACCOUNT_ID},
+    \"amount\": 10000.00,
+    \"description\": \"Expected insufficient balance\"
+  }" \
+  "$PRIMARY_TOKEN" \
+  "$FAILED_TRANSFER_IDEMPOTENCY_KEY"
+
+echo "Insufficient balance transfer correctly rejected"
+
+log "Retrying the failed operation with valid transfer data"
+
+request POST \
+  "/api/transfers" \
+  201 \
+  "{
+    \"fromAccountId\": ${ACCOUNT_ID},
+    \"toAccountId\": ${DESTINATION_ACCOUNT_ID},
+    \"amount\": 50.00,
+    \"description\": \"Recovered transfer\"
+  }" \
+  "$PRIMARY_TOKEN" \
+  "$FAILED_TRANSFER_IDEMPOTENCY_KEY"
+
+RECOVERED_TRANSFER_ID="$(json_get "$HTTP_BODY" "id")"
+
+[[ -n "$RECOVERED_TRANSFER_ID" ]] \
+  || fail "Recovered transfer id is empty"
+
+[[ "$RECOVERED_TRANSFER_ID" != "$TRANSFER_ID" ]] \
+  || fail "Recovered operation should create a new transfer"
+
+echo "Failed operation's idempotency key was successfully reused"
+
+log "Verifying balances after recovered transfer"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals "$HTTP_BODY" "balance" "500.00" \
+  || fail "Unexpected source balance after recovered transfer: ${HTTP_BODY}"
+
+request GET \
+  "/api/accounts/${DESTINATION_ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals "$HTTP_BODY" "balance" "550.00" \
+  || fail "Unexpected destination balance after recovered transfer: ${HTTP_BODY}"
+
+echo "Recovered transfer balances are correct"
 
 log "Verifying transfer history filtering and pagination"
 
@@ -467,73 +618,6 @@ request GET \
   "$PRIMARY_TOKEN"
 
 echo "Invalid transfer date range correctly rejected"
-
-log "Verifying account balances after transfer"
-
-request GET \
-  "/api/accounts/${ACCOUNT_ID}" \
-  200 \
-  "" \
-  "$PRIMARY_TOKEN"
-
-json_decimal_equals \
-  "$HTTP_BODY" \
-  "balance" \
-  "550.00" \
-  || fail "Source account balance is incorrect after transfer: ${HTTP_BODY}"
-
-request GET \
-  "/api/accounts/${DESTINATION_ACCOUNT_ID}" \
-  200 \
-  "" \
-  "$PRIMARY_TOKEN"
-
-json_decimal_equals \
-  "$HTTP_BODY" \
-  "balance" \
-  "500.00" \
-  || fail "Destination account balance is incorrect after transfer: ${HTTP_BODY}"
-
-echo "Transfer balances are correct"
-
-log "Verifying insufficient balance rejection"
-
-request POST "/api/transfers" 409 "{
-  \"fromAccountId\": ${ACCOUNT_ID},
-  \"toAccountId\": ${DESTINATION_ACCOUNT_ID},
-  \"amount\": 10000.00,
-  \"description\": \"This transfer must fail\"
-}" "$PRIMARY_TOKEN"
-
-echo "Insufficient balance correctly rejected"
-
-log "Verifying balances remained unchanged after rejected transfer"
-
-request GET \
-  "/api/accounts/${ACCOUNT_ID}" \
-  200 \
-  "" \
-  "$PRIMARY_TOKEN"
-
-json_decimal_equals \
-  "$HTTP_BODY" \
-  "balance" \
-  "550.00" \
-  || fail "Source balance changed after rejected transfer: ${HTTP_BODY}"
-
-request GET \
-  "/api/accounts/${DESTINATION_ACCOUNT_ID}" \
-  200 \
-  "" \
-  "$PRIMARY_TOKEN"
-
-json_decimal_equals \
-  "$HTTP_BODY" \
-  "balance" \
-  "500.00" \
-  || fail "Destination balance changed after rejected transfer: ${HTTP_BODY}"
-
-echo "Rejected transfer did not modify balances"
 
 log "Waiting for Budget Service to consume the transaction event"
 BUDGET_READY=false

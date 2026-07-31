@@ -79,6 +79,21 @@ public class AccountTransfer {
     private String description;
 
     @Column(
+            name = "idempotency_key",
+            nullable = false,
+            length = 100,
+            updatable = false
+    )
+    private String idempotencyKey;
+    @Column(
+            name = "request_fingerprint",
+            nullable = false,
+            length = 64,
+            updatable = false
+    )
+    private String requestFingerprint;
+
+    @Column(
             name = "transferred_at",
             nullable = false
     )

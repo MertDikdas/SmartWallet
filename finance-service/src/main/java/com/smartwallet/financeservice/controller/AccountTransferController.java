@@ -24,6 +24,8 @@ public class AccountTransferController {
     @PostMapping
     public ResponseEntity<TransferResponse> createTransfer(
             @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader("Idempotency-Key")
+            String idempotencyKey,
             @Valid @RequestBody CreateTransferRequest request
     ) {
         Long userId =
@@ -31,6 +33,7 @@ public class AccountTransferController {
 
         TransferResponse response = accountTransferService.createTransfer(
                 userId,
+                idempotencyKey,
                 request
         );
 

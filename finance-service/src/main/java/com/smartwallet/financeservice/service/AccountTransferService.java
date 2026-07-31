@@ -6,15 +6,13 @@ import com.smartwallet.financeservice.dto.response.PageResponse;
 import com.smartwallet.financeservice.dto.response.TransferResponse;
 import com.smartwallet.financeservice.entity.Account;
 import com.smartwallet.financeservice.entity.AccountTransfer;
-import com.smartwallet.financeservice.exception.AccountNotFoundException;
-import com.smartwallet.financeservice.exception.InsufficientBalanceException;
-import com.smartwallet.financeservice.exception.InvalidTransferAccountException;
-import com.smartwallet.financeservice.exception.TransferCurrencyMismatchException;
+import com.smartwallet.financeservice.exception.*;
 import com.smartwallet.financeservice.mapper.AccountTransferMapper;
 import com.smartwallet.financeservice.repository.AccountRepository;
 import com.smartwallet.financeservice.repository.AccountTransferRepository;
 import com.smartwallet.financeservice.specification.AccountTransferSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,8 +20,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,21 +38,50 @@ public class AccountTransferService {
     @Transactional
     public TransferResponse createTransfer(
             Long userId,
+            String idempotencyKey,
             CreateTransferRequest request
     ) {
+        String normalizedIdempotencyKey =
+                normalizeIdempotencyKey(idempotencyKey);
+
         validateDifferentAccounts(
                 request.fromAccountId(),
                 request.toAccountId()
         );
 
-        AccountPair accountPair = lockAccounts(
+        String requestFingerprint =
+                createRequestFingerprint(request);
+
+        Optional<TransferResponse> existingResponse =
+                findExistingIdempotentResponse(
+                        userId,
+                        normalizedIdempotencyKey,
+                        requestFingerprint
+                );
+
+        if (existingResponse.isPresent()) {
+            return existingResponse.get();
+        }
+
+        AccountPair accounts = lockAccounts(
                 userId,
                 request.fromAccountId(),
                 request.toAccountId()
         );
 
-        Account fromAccount = accountPair.fromAccount();
-        Account toAccount = accountPair.toAccount();
+        existingResponse =
+                findExistingIdempotentResponse(
+                        userId,
+                        normalizedIdempotencyKey,
+                        requestFingerprint
+                );
+
+        if (existingResponse.isPresent()) {
+            return existingResponse.get();
+        }
+
+        Account fromAccount = accounts.fromAccount();
+        Account toAccount = accounts.toAccount();
 
         validateSameCurrency(
                 fromAccount,
@@ -62,11 +94,14 @@ public class AccountTransferService {
         );
 
         fromAccount.setBalance(
-                fromAccount.getBalance()
+                fromAccount
+                        .getBalance()
                         .subtract(request.amount())
         );
+
         toAccount.setBalance(
-                toAccount.getBalance()
+                toAccount
+                        .getBalance()
                         .add(request.amount())
         );
 
@@ -85,6 +120,12 @@ public class AccountTransferService {
                                         request.description()
                                 )
                         )
+                        .idempotencyKey(
+                                normalizedIdempotencyKey
+                        )
+                        .requestFingerprint(
+                                requestFingerprint
+                        )
                         .transferredAt(
                                 request.transferredAt() != null
                                         ? request.transferredAt()
@@ -92,11 +133,17 @@ public class AccountTransferService {
                         )
                         .build();
 
-        AccountTransfer savedTransfer =
-                transferRepository.save(transfer);
+        try {
+            AccountTransfer savedTransfer =
+                    transferRepository.saveAndFlush(transfer);
 
-        return transferMapper.toResponse(savedTransfer);
+            return transferMapper.toResponse(savedTransfer);
+
+        } catch (DataIntegrityViolationException exception) {
+            throw new IdempotencyConflictException();
+        }
     }
+
 
     @Transactional(readOnly = true)
     public PageResponse<TransferResponse> getTransfers(
@@ -131,6 +178,101 @@ public class AccountTransferService {
         return PageResponse.from(transferPage);
     }
 
+    private String createRequestFingerprint(
+            CreateTransferRequest request
+    ) {
+        String normalizedDescription =
+                normalizeDescription(
+                        request.description()
+                );
+
+        String normalizedAmount =
+                request.amount() != null
+                        ? request.amount()
+                        .stripTrailingZeros()
+                        .toPlainString()
+                        : "null";
+
+        String transferredAtValue =
+                request.transferredAt() != null
+                        ? request.transferredAt().toString()
+                        : "null";
+
+        String canonicalRequest =
+                String.join(
+                        "|",
+                        String.valueOf(request.fromAccountId()),
+                        String.valueOf(request.toAccountId()),
+                        normalizedAmount,
+                        normalizedDescription != null
+                                ? normalizedDescription
+                                : "null",
+                        transferredAtValue
+                );
+
+        try {
+            MessageDigest messageDigest =
+                    MessageDigest.getInstance("SHA-256");
+
+            byte[] hash =
+                    messageDigest.digest(
+                            canonicalRequest.getBytes(
+                                    StandardCharsets.UTF_8
+                            )
+                    );
+
+            return HexFormat.of()
+                    .formatHex(hash);
+
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException(
+                    "SHA-256 algorithm is not available",
+                    exception
+            );
+        }
+    }
+
+    private String normalizeIdempotencyKey(
+            String idempotencyKey
+    ) {
+        if (idempotencyKey == null) {
+            throw new InvalidIdempotencyKeyException();
+        }
+
+        String normalized =
+                idempotencyKey.trim();
+
+        if (normalized.isEmpty()
+                || normalized.length() > 100) {
+            throw new InvalidIdempotencyKeyException();
+        }
+
+        return normalized;
+    }
+
+    private Optional<TransferResponse>
+    findExistingIdempotentResponse(
+            Long userId,
+            String idempotencyKey,
+            String requestFingerprint
+    ) {
+        return transferRepository
+                .findByUserIdAndIdempotencyKey(
+                        userId,
+                        idempotencyKey
+                )
+                .map(existingTransfer -> {
+                    if (!existingTransfer
+                            .getRequestFingerprint()
+                            .equals(requestFingerprint)) {
+                        throw new IdempotencyConflictException();
+                    }
+
+                    return transferMapper.toResponse(
+                            existingTransfer
+                    );
+                });
+    }
     private AccountPair lockAccounts(
             Long userId,
             Long fromAccountId,

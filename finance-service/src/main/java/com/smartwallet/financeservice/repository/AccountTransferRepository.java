@@ -14,4 +14,6 @@ public interface AccountTransferRepository
             Long id,
             Long userId
     );
+
+    Optional<AccountTransfer> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 }
