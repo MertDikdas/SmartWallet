@@ -65,6 +65,16 @@ public class AccountService {
         return accountMapper.toResponse(account);
     }
 
+    @Transactional(readOnly = true)
+    public List<AccountResponse> getArchivedAccounts(Long userId){
+        return accountRepository.
+                findAllByUserIdAndStatusOrderByCreatedAtDesc(
+                        userId,
+                        AccountStatus.ARCHIVED
+                ).stream()
+                .map(accountMapper::toResponse).toList();
+    }
+
     @Transactional
     public AccountResponse updateAccount(
             Long userId,
@@ -105,6 +115,24 @@ public class AccountService {
         account.setStatus(AccountStatus.ARCHIVED);
 
         accountRepository.save(account);
+    }
+
+    @Transactional
+    public AccountResponse restoreAccount(
+            Long userId,
+            Long accountId
+    ){
+        Account account = findOwnedAccount(accountId, userId);
+
+        if(account.getStatus() == AccountStatus.ACTIVE){
+            return accountMapper.toResponse(account);
+        }
+
+        account.setStatus(AccountStatus.ACTIVE);
+
+        Account restoredAccount = accountRepository.save(account);
+        return accountMapper.toResponse(restoredAccount);
+
     }
 
     private Account findOwnedAccount(

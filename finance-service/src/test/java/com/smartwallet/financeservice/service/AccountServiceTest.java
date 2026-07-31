@@ -1,10 +1,12 @@
 package com.smartwallet.financeservice.service;
 
+import com.smartwallet.financeservice.dto.response.AccountResponse;
 import com.smartwallet.financeservice.entity.Account;
 import com.smartwallet.financeservice.entity.AccountStatus;
 import com.smartwallet.financeservice.entity.AccountType;
 import com.smartwallet.financeservice.entity.CurrencyCode;
 import com.smartwallet.financeservice.exception.AccountBalanceNotZeroException;
+import com.smartwallet.financeservice.exception.AccountNotFoundException;
 import com.smartwallet.financeservice.mapper.AccountMapper;
 import com.smartwallet.financeservice.repository.AccountRepository;
 import org.junit.jupiter.api.Test;
@@ -21,9 +23,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class AccountServiceTest {
@@ -172,4 +172,155 @@ public class AccountServiceTest {
                 );
     }
 
+    @Test
+    void shouldReturnOnlyArchivedAccounts(){
+        Long userId = 10L;
+
+        Account account =
+                Account.builder()
+                        .id(1L)
+                        .userId(userId)
+                        .name("Main Account")
+                        .type(AccountType.CHECKING)
+                        .currency(CurrencyCode.TRY)
+                        .balance(new BigDecimal("120.00"))
+                        .status(AccountStatus.ARCHIVED)
+                        .build();
+
+        AccountResponse response = mock(AccountResponse.class);
+
+        when(
+                accountRepository.
+                        findAllByUserIdAndStatusOrderByCreatedAtDesc(
+                                userId,
+                                AccountStatus.ARCHIVED
+                        )
+        ).thenReturn(List.of(account));
+        when(
+                accountMapper.toResponse(account)
+        ).thenReturn(response);
+        List<AccountResponse> archivedAccounts = accountService.getArchivedAccounts(userId);
+
+        assertThat(archivedAccounts).containsExactly(response);
+        verify(accountMapper).toResponse(account);
+    }
+
+    @Test
+    public void shouldRestoreArchivedAccount() {
+        Long userId = 10L;
+        Long accountId = 5L;
+
+        Account account = Account.builder()
+                .id(accountId)
+                .userId(userId)
+                .name("Main Account")
+                .type(AccountType.CHECKING)
+                .currency(CurrencyCode.TRY)
+                .balance(new BigDecimal("120.00"))
+                .status(AccountStatus.ARCHIVED)
+                .build();
+
+        AccountResponse response = mock(AccountResponse.class);
+
+        when(
+                accountRepository.findByIdAndUserId(
+                        accountId,
+                        userId
+                )
+        ).thenReturn(Optional.of(account));
+
+        when(
+                accountRepository.save(account)
+        ).thenReturn(account);
+
+        when(
+                accountMapper.toResponse(account)
+        ).thenReturn(response);
+        AccountResponse result = accountService.restoreAccount(userId, accountId);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(account.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+
+        verify(accountRepository).save(account);
+
+        verify(accountMapper).toResponse(account);
+
+    }
+
+    @Test
+    void shouldReturnAccountWithoutSavingWhenAlreadyActive() {
+        Long userId = 10L;
+        Long accountId = 5L;
+
+        Account activeAccount =
+                Account.builder()
+                        .id(accountId)
+                        .userId(userId)
+                        .name("Main Account")
+                        .type(AccountType.CHECKING)
+                        .currency(CurrencyCode.TRY)
+                        .balance(BigDecimal.ZERO)
+                        .status(AccountStatus.ACTIVE)
+                        .build();
+
+        AccountResponse response =
+                mock(AccountResponse.class);
+
+        when(
+                accountRepository.findByIdAndUserId(
+                        accountId,
+                        userId
+                )
+        ).thenReturn(
+                Optional.of(activeAccount)
+        );
+
+        when(
+                accountMapper.toResponse(activeAccount)
+        ).thenReturn(response);
+
+        AccountResponse result =
+                accountService.restoreAccount(
+                        userId,
+                        accountId
+                );
+
+        assertThat(result)
+                .isEqualTo(response);
+
+        assertThat(activeAccount.getStatus())
+                .isEqualTo(AccountStatus.ACTIVE);
+
+        verify(accountRepository, never())
+                .save(any(Account.class));
+
+        verify(accountMapper)
+                .toResponse(activeAccount);
+    }
+
+    @Test
+    void shouldRejectRestoringAccountThatDoesNotBelongToUser() {
+        Long userId = 10L;
+        Long accountId = 99L;
+
+        when(
+                accountRepository.findByIdAndUserId(
+                        accountId,
+                        userId
+                )
+        ).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                () -> accountService.restoreAccount(
+                        userId,
+                        accountId
+                )
+        )
+                .isInstanceOf(AccountNotFoundException.class);
+
+        verify(accountRepository, never())
+                .save(any(Account.class));
+
+        verifyNoInteractions(accountMapper);
+    }
 }

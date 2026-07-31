@@ -59,6 +59,39 @@ public class AccountController {
         );
     }
 
+    @GetMapping("/archived")
+    public ResponseEntity<List<AccountResponse>> getArchivedAccounts(
+            @AuthenticationPrincipal Jwt jwt
+    ){
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        return ResponseEntity.ok(
+                accountService.getArchivedAccounts(
+                        userId
+                )
+        );
+
+    }
+
+    @PatchMapping("/{accountId}/restore")
+    public ResponseEntity<AccountResponse> restoreAccount(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long accountId
+    )
+    {
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        AccountResponse response =
+                accountService.restoreAccount(
+                        userId,
+                        accountId
+                );
+        return ResponseEntity.ok(response);
+
+    }
+
     @PatchMapping("/{accountId}")
     public ResponseEntity<AccountResponse> updateAccount(
             @AuthenticationPrincipal Jwt jwt,

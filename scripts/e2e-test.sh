@@ -280,6 +280,35 @@ sys.exit(1 if contains_id else 0)
 PY
 }
 
+json_collection_contains_id() {
+  local json="$1"
+  local expected_id="$2"
+
+  JSON_INPUT="$json" python3 - "$expected_id" <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["JSON_INPUT"])
+expected_id = int(sys.argv[1])
+
+if isinstance(data, list):
+    content = data
+elif isinstance(data, dict):
+    content = data.get("content", [])
+else:
+    sys.exit(1)
+
+contains_id = any(
+    isinstance(item, dict)
+    and item.get("id") == expected_id
+    for item in content
+)
+
+sys.exit(0 if contains_id else 1)
+PY
+}
+
 require_command curl
 require_command python3
 
@@ -756,15 +785,21 @@ request DELETE \
 
 echo "Zero-balance account archived successfully"
 
-log "Verifying that the archived account is no longer accessible"
+log "Verifying that the account appears in archived accounts"
 
 request GET \
-  "/api/accounts/${ARCHIVED_ACCOUNT_ID}" \
-  404 \
+  "/api/accounts/archived" \
+  200 \
   "" \
   "$PRIMARY_TOKEN"
 
-echo "Archived account is no longer accessible"
+json_collection_contains_id \
+  "$HTTP_BODY" \
+  "$ARCHIVED_ACCOUNT_ID" \
+  || fail "Archived account was not found in archived account list: ${HTTP_BODY}"
+
+echo "Archived account appears in archived account list"
+
 
 log "Verifying that the archived account is hidden from account list"
 
@@ -780,15 +815,6 @@ json_collection_does_not_contain_id \
   || fail "Archived account is still visible in account list: ${HTTP_BODY}"
 
 echo "Archived account is hidden from account list"
-request GET \
-  "/api/accounts/${ACCOUNT_ID}" \
-  200 \
-  "" \
-  "$PRIMARY_TOKEN"
-
-SOURCE_BALANCE_BEFORE_ARCHIVED_TRANSFER="$(
-  json_get "$HTTP_BODY" "balance"
-)"
 
 log "Verifying that transfers to an archived account are rejected"
 
@@ -805,6 +831,131 @@ request POST \
   "archived-account-transfer-${RUN_SUFFIX}"
 
 echo "Transfer to archived account correctly rejected"
+
+log "Restoring the archived account"
+
+request PATCH \
+  "/api/accounts/${ARCHIVED_ACCOUNT_ID}/restore" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+RESTORED_ACCOUNT_ID="$(json_get "$HTTP_BODY" "id")"
+
+[[ "$RESTORED_ACCOUNT_ID" == "$ARCHIVED_ACCOUNT_ID" ]] \
+  || fail "Restored account id is incorrect: ${HTTP_BODY}"
+
+echo "Archived account restored successfully"
+
+
+log "Verifying repeated account restore"
+
+request PATCH \
+  "/api/accounts/${ARCHIVED_ACCOUNT_ID}/restore" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+REPEATED_RESTORE_ACCOUNT_ID="$(json_get "$HTTP_BODY" "id")"
+
+[[ "$REPEATED_RESTORE_ACCOUNT_ID" == "$ARCHIVED_ACCOUNT_ID" ]] \
+  || fail "Repeated restore returned an incorrect account: ${HTTP_BODY}"
+
+echo "Repeated account restore completed without duplication"
+
+log "Verifying that the restored account disappeared from archived accounts"
+
+request GET \
+  "/api/accounts/archived" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_collection_does_not_contain_id \
+  "$HTTP_BODY" \
+  "$ARCHIVED_ACCOUNT_ID" \
+  || fail "Restored account is still visible in archived account list: ${HTTP_BODY}"
+
+echo "Restored account disappeared from archived account list"
+
+log "Verifying that the restored account appears in active accounts"
+
+request GET \
+  "/api/accounts" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_collection_contains_id \
+  "$HTTP_BODY" \
+  "$ARCHIVED_ACCOUNT_ID" \
+  || fail "Restored account was not found in active account list: ${HTTP_BODY}"
+
+echo "Restored account appears in active account list"
+
+request GET \
+  "/api/accounts/${ARCHIVED_ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+[[ "$(json_get "$HTTP_BODY" "id")" == "$ARCHIVED_ACCOUNT_ID" ]] \
+  || fail "Restored account GET response is incorrect: ${HTTP_BODY}"
+
+echo "Restored account is accessible"
+
+log "Transferring money to the restored account"
+
+request POST \
+  "/api/transfers" \
+  201 \
+  "{
+    \"fromAccountId\": ${ACCOUNT_ID},
+    \"toAccountId\": ${ARCHIVED_ACCOUNT_ID},
+    \"amount\": 10.00,
+    \"description\": \"Restored account transfer test\"
+  }" \
+  "$PRIMARY_TOKEN" \
+  "restored-account-transfer-${RUN_SUFFIX}"
+
+RESTORED_ACCOUNT_TRANSFER_ID="$(json_get "$HTTP_BODY" "id")"
+
+[[ -n "$RESTORED_ACCOUNT_TRANSFER_ID" ]] \
+  || fail "Restored account transfer id is empty"
+
+[[ "$(json_get "$HTTP_BODY" "toAccountId")" == "$ARCHIVED_ACCOUNT_ID" ]] \
+  || fail "Restored account was not the transfer destination: ${HTTP_BODY}"
+
+echo "Transfer to restored account completed successfully"
+
+log "Verifying restored account balance"
+
+request GET \
+  "/api/accounts/${ARCHIVED_ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "balance" \
+  "10.00" \
+  || fail "Restored account balance is incorrect: ${HTTP_BODY}"
+
+echo "Restored account balance is correct"
+
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+SOURCE_BALANCE_BEFORE_ARCHIVED_TRANSFER="$(
+  json_get "$HTTP_BODY" "balance"
+)"
+
+
 
 log "Verifying rejected archived-account transfer did not change balance"
 
