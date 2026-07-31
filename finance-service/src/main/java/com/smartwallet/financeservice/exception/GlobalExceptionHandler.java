@@ -158,7 +158,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             InvalidTransferAccountException.class,
-            TransferCurrencyMismatchException.class
+            TransferCurrencyMismatchException.class,
+            InvalidIdempotencyKeyException.class
     })
     public ResponseEntity<ApiError> handleInvalidTransferException(
             RuntimeException exception,
@@ -177,4 +178,21 @@ public class GlobalExceptionHandler {
                 .body(error);
     }
 
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<ApiError> handleIdempotencyConflictException(
+            IdempotencyConflictException exception,
+            HttpServletRequest request
+    ){
+        ApiError error = new ApiError(
+                Instant.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(error);
+    }
 }

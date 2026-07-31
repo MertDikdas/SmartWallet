@@ -114,7 +114,7 @@ class AccountTransferServiceTest {
         ).thenReturn(Optional.of(toAccount));
 
         when(
-                transferRepository.save(
+                transferRepository.saveAndFlush(
                         any(AccountTransfer.class)
                 )
         ).thenAnswer(
@@ -130,6 +130,7 @@ class AccountTransferServiceTest {
         TransferResponse result =
                 transferService.createTransfer(
                         userId,
+                        "transfer-key-success",
                         request
                 );
 
@@ -154,7 +155,7 @@ class AccountTransferServiceTest {
                 );
 
         verify(transferRepository)
-                .save(transferCaptor.capture());
+                .saveAndFlush(transferCaptor.capture());
 
         AccountTransfer savedTransfer =
                 transferCaptor.getValue();
@@ -228,6 +229,7 @@ class AccountTransferServiceTest {
         assertThatThrownBy(
                 () -> transferService.createTransfer(
                         userId,
+                        "transfer-key-insufficient",
                         request
                 )
         )
