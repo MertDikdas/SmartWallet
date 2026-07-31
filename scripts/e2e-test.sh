@@ -251,6 +251,35 @@ sys.exit(
 PY
 }
 
+json_collection_does_not_contain_id() {
+  local json="$1"
+  local unexpected_id="$2"
+
+  JSON_INPUT="$json" python3 - "$unexpected_id" <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["JSON_INPUT"])
+unexpected_id = int(sys.argv[1])
+
+if isinstance(data, list):
+    content = data
+elif isinstance(data, dict):
+    content = data.get("content", [])
+else:
+    sys.exit(1)
+
+contains_id = any(
+    item.get("id") == unexpected_id
+    for item in content
+    if isinstance(item, dict)
+)
+
+sys.exit(1 if contains_id else 0)
+PY
+}
+
 require_command curl
 require_command python3
 
@@ -678,6 +707,120 @@ done
 
 [[ "$ANALYTICS_READY" == "true" ]] \
   || fail "Analytics projection was not updated in time"
+
+log "Verifying that a non-zero balance account cannot be archived"
+
+request DELETE \
+  "/api/accounts/${ACCOUNT_ID}" \
+  409 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+echo "Non-zero balance account archive correctly rejected"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+echo "Rejected archive left the account active"
+
+log "Creating an empty account for archive testing"
+
+request POST \
+  "/api/accounts" \
+  201 \
+  "{
+    \"name\": \"E2E Archived Account ${RUN_SUFFIX}\",
+    \"type\": \"CASH\",
+    \"currency\": \"TRY\",
+    \"initialBalance\": 0.00
+  }" \
+  "$PRIMARY_TOKEN"
+
+ARCHIVED_ACCOUNT_ID="$(json_get "$HTTP_BODY" "id")"
+
+[[ -n "$ARCHIVED_ACCOUNT_ID" ]] \
+  || fail "Archive test account id is empty"
+
+echo "Archive test account id: ${ARCHIVED_ACCOUNT_ID}"
+
+log "Archiving the zero-balance account"
+
+request DELETE \
+  "/api/accounts/${ARCHIVED_ACCOUNT_ID}" \
+  204 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+echo "Zero-balance account archived successfully"
+
+log "Verifying that the archived account is no longer accessible"
+
+request GET \
+  "/api/accounts/${ARCHIVED_ACCOUNT_ID}" \
+  404 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+echo "Archived account is no longer accessible"
+
+log "Verifying that the archived account is hidden from account list"
+
+request GET \
+  "/api/accounts" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_collection_does_not_contain_id \
+  "$HTTP_BODY" \
+  "$ARCHIVED_ACCOUNT_ID" \
+  || fail "Archived account is still visible in account list: ${HTTP_BODY}"
+
+echo "Archived account is hidden from account list"
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+SOURCE_BALANCE_BEFORE_ARCHIVED_TRANSFER="$(
+  json_get "$HTTP_BODY" "balance"
+)"
+
+log "Verifying that transfers to an archived account are rejected"
+
+request POST \
+  "/api/transfers" \
+  404 \
+  "{
+    \"fromAccountId\": ${ACCOUNT_ID},
+    \"toAccountId\": ${ARCHIVED_ACCOUNT_ID},
+    \"amount\": 10.00,
+    \"description\": \"Archived account transfer test\"
+  }" \
+  "$PRIMARY_TOKEN" \
+  "archived-account-transfer-${RUN_SUFFIX}"
+
+echo "Transfer to archived account correctly rejected"
+
+log "Verifying rejected archived-account transfer did not change balance"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "balance" \
+  "$SOURCE_BALANCE_BEFORE_ARCHIVED_TRANSFER" \
+  || fail "Source balance changed after rejected archived-account transfer: ${HTTP_BODY}"
+
+echo "Rejected archived-account transfer did not change balance"
 
 log "End-to-end flow passed"
 echo "Primary user id : ${PRIMARY_USER_ID}"

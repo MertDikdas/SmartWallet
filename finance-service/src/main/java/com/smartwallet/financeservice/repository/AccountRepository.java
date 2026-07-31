@@ -1,6 +1,7 @@
 package com.smartwallet.financeservice.repository;
 
 import com.smartwallet.financeservice.entity.Account;
+import com.smartwallet.financeservice.entity.AccountStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -17,6 +18,18 @@ public interface AccountRepository
             Long userId
     );
 
+
+    List<Account> findAllByUserIdAndStatusOrderByCreatedAtDesc(
+            Long userId,
+            AccountStatus status
+    );
+
+    Optional<Account> findByIdAndUserIdAndStatus(
+            Long accountId,
+            Long userId,
+            AccountStatus status
+    );
+
     Optional<Account> findByIdAndUserId(
             Long accountId,
             Long userId
@@ -24,13 +37,15 @@ public interface AccountRepository
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-        SELECT account
-        FROM Account account
-        WHERE account.id = :accountId
-          AND account.userId = :userId
-        """)
+            SELECT account
+            FROM Account account
+            WHERE account.id = :accountId
+              AND account.userId = :userId
+              AND account.status = :status
+            """)
     Optional<Account> findOwnedAccountForUpdate(
             @Param("accountId") Long accountId,
-            @Param("userId") Long userId
+            @Param("userId") Long userId,
+            @Param("status") AccountStatus status
     );
 }
