@@ -195,4 +195,23 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .body(error);
     }
+
+    @ExceptionHandler(AccountBalanceNotZeroException.class)
+    public ResponseEntity<ApiError> handleAccountBalanceNotZero(
+            AccountBalanceNotZeroException exception,
+            HttpServletRequest request
+    ) {
+        ApiError error = new ApiError(
+                Instant.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(error);
+    }
 }

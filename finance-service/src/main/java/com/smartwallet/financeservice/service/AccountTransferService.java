@@ -5,6 +5,7 @@ import com.smartwallet.financeservice.dto.request.TransferFilterRequest;
 import com.smartwallet.financeservice.dto.response.PageResponse;
 import com.smartwallet.financeservice.dto.response.TransferResponse;
 import com.smartwallet.financeservice.entity.Account;
+import com.smartwallet.financeservice.entity.AccountStatus;
 import com.smartwallet.financeservice.entity.AccountTransfer;
 import com.smartwallet.financeservice.exception.*;
 import com.smartwallet.financeservice.mapper.AccountTransferMapper;
@@ -325,7 +326,8 @@ public class AccountTransferService {
         return accountRepository
                 .findOwnedAccountForUpdate(
                         accountId,
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
                 .orElseThrow(
                         () -> new AccountNotFoundException(

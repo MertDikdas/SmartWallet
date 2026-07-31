@@ -47,7 +47,8 @@ public class TransactionService {
         Account account = accountRepository
                 .findOwnedAccountForUpdate(
                         request.accountId(),
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
                 .orElseThrow(
                         () -> new AccountNotFoundException(
@@ -272,7 +273,8 @@ public class TransactionService {
         Account account = accountRepository
                 .findOwnedAccountForUpdate(
                         transaction.getAccount().getId(),
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
                 .orElseThrow(
                         () -> new AccountNotFoundException(
@@ -369,7 +371,10 @@ public class TransactionService {
             Long accountId
     ) {
         return accountRepository
-                .findOwnedAccountForUpdate(accountId, userId)
+                .findOwnedAccountForUpdate(
+                        accountId,
+                        userId,
+                        AccountStatus.ACTIVE)
                 .orElseThrow(
                         () -> new AccountNotFoundException(accountId)
                 );

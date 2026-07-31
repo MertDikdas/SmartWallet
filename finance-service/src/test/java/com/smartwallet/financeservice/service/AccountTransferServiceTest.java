@@ -4,10 +4,7 @@ import com.smartwallet.financeservice.dto.request.CreateTransferRequest;
 import com.smartwallet.financeservice.dto.request.TransferFilterRequest;
 import com.smartwallet.financeservice.dto.response.PageResponse;
 import com.smartwallet.financeservice.dto.response.TransferResponse;
-import com.smartwallet.financeservice.entity.Account;
-import com.smartwallet.financeservice.entity.AccountTransfer;
-import com.smartwallet.financeservice.entity.AccountType;
-import com.smartwallet.financeservice.entity.CurrencyCode;
+import com.smartwallet.financeservice.entity.*;
 import com.smartwallet.financeservice.exception.InsufficientBalanceException;
 import com.smartwallet.financeservice.mapper.AccountTransferMapper;
 import com.smartwallet.financeservice.repository.AccountRepository;
@@ -102,14 +99,16 @@ class AccountTransferServiceTest {
         when(
                 accountRepository.findOwnedAccountForUpdate(
                         1L,
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
         ).thenReturn(Optional.of(fromAccount));
 
         when(
                 accountRepository.findOwnedAccountForUpdate(
                         2L,
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
         ).thenReturn(Optional.of(toAccount));
 
@@ -215,14 +214,16 @@ class AccountTransferServiceTest {
         when(
                 accountRepository.findOwnedAccountForUpdate(
                         1L,
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
         ).thenReturn(Optional.of(fromAccount));
 
         when(
                 accountRepository.findOwnedAccountForUpdate(
                         2L,
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
         ).thenReturn(Optional.of(toAccount));
 
