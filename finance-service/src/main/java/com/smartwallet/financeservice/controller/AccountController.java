@@ -57,6 +57,7 @@ public class AccountController {
         return ResponseEntity.ok(
                 accountService.getAccount(userId, accountId)
         );
+
     }
 
     @GetMapping("/archived")
