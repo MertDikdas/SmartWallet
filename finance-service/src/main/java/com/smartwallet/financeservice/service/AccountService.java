@@ -4,6 +4,8 @@ import com.smartwallet.financeservice.dto.request.CreateAccountRequest;
 import com.smartwallet.financeservice.dto.request.UpdateAccountRequest;
 import com.smartwallet.financeservice.dto.response.AccountResponse;
 import com.smartwallet.financeservice.entity.Account;
+import com.smartwallet.financeservice.entity.AccountStatus;
+import com.smartwallet.financeservice.exception.AccountBalanceNotZeroException;
 import com.smartwallet.financeservice.exception.AccountNotFoundException;
 import com.smartwallet.financeservice.mapper.AccountMapper;
 import com.smartwallet.financeservice.repository.AccountRepository;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -31,6 +34,7 @@ public class AccountService {
                 .type(request.type())
                 .currency(request.currency())
                 .balance(request.initialBalance())
+                .status(AccountStatus.ACTIVE)
                 .build();
 
         Account savedAccount =
@@ -42,7 +46,10 @@ public class AccountService {
     @Transactional(readOnly = true)
     public List<AccountResponse> getAccounts(Long userId) {
         return accountRepository
-                .findAllByUserIdOrderByCreatedAtDesc(userId)
+                .findAllByUserIdAndStatusOrderByCreatedAtDesc(
+                        userId,
+                        AccountStatus.ACTIVE
+                )
                 .stream()
                 .map(accountMapper::toResponse)
                 .toList();
@@ -53,9 +60,19 @@ public class AccountService {
             Long userId,
             Long accountId
     ) {
-        Account account = findOwnedAccount(accountId, userId);
+        Account account = getOwnedActiveAccount(accountId, userId);
 
         return accountMapper.toResponse(account);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AccountResponse> getArchivedAccounts(Long userId){
+        return accountRepository.
+                findAllByUserIdAndStatusOrderByCreatedAtDesc(
+                        userId,
+                        AccountStatus.ARCHIVED
+                ).stream()
+                .map(accountMapper::toResponse).toList();
     }
 
     @Transactional
@@ -64,7 +81,7 @@ public class AccountService {
             Long accountId,
             UpdateAccountRequest request
     ) {
-        Account account = findOwnedAccount(accountId, userId);
+        Account account = getOwnedActiveAccount(accountId, userId);
 
         if (request.name() != null) {
             account.setName(request.name().trim());
@@ -87,8 +104,35 @@ public class AccountService {
             Long accountId
     ) {
         Account account = findOwnedAccount(accountId, userId);
+        if (account.getStatus() == AccountStatus.ARCHIVED){
+            return;
+        }
 
-        accountRepository.delete(account);
+        if(account.getBalance().compareTo(BigDecimal.ZERO) != 0 ){
+            throw new AccountBalanceNotZeroException();
+        }
+
+        account.setStatus(AccountStatus.ARCHIVED);
+
+        accountRepository.save(account);
+    }
+
+    @Transactional
+    public AccountResponse restoreAccount(
+            Long userId,
+            Long accountId
+    ){
+        Account account = findOwnedAccount(accountId, userId);
+
+        if(account.getStatus() == AccountStatus.ACTIVE){
+            return accountMapper.toResponse(account);
+        }
+
+        account.setStatus(AccountStatus.ACTIVE);
+
+        Account restoredAccount = accountRepository.save(account);
+        return accountMapper.toResponse(restoredAccount);
+
     }
 
     private Account findOwnedAccount(
@@ -97,6 +141,22 @@ public class AccountService {
     ) {
         return accountRepository
                 .findByIdAndUserId(accountId, userId)
+                .orElseThrow(
+                        () -> new AccountNotFoundException(accountId)
+                );
+    }
+
+
+    private Account getOwnedActiveAccount(
+            Long accountId,
+            Long userId
+    ) {
+        return accountRepository
+                .findByIdAndUserIdAndStatus(
+                        accountId,
+                        userId,
+                        AccountStatus.ACTIVE
+                )
                 .orElseThrow(
                         () -> new AccountNotFoundException(accountId)
                 );

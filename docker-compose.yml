@@ -141,6 +141,10 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: smartwallet
       RABBITMQ_PASSWORD: smartwallet
+      JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt_public_key
+
+    secrets:
+      - jwt_public_key
 
     ports:
       - "8085:8085"
@@ -175,6 +179,13 @@ services:
       AUTH_DB_URL: jdbc:postgresql://auth-postgres:5432/smartwallet_auth
       AUTH_DB_USERNAME: smartwallet
       AUTH_DB_PASSWORD: smartwallet
+
+      JWT_PRIVATE_KEY_LOCATION: file:/run/secrets/jwt_private_key
+      JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt_public_key
+
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
 
     ports:
       - "8081:8081"
@@ -211,6 +222,10 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: smartwallet
       RABBITMQ_PASSWORD: smartwallet
+      JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt_public_key
+
+    secrets:
+      - jwt_public_key
 
     ports:
       - "8082:8082"
@@ -252,7 +267,10 @@ services:
       RABBITMQ_PASSWORD: smartwallet
 
       FINANCE_SERVICE_URL: http://finance-service:8082
+      JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt_public_key
 
+    secrets:
+      - jwt_public_key
     ports:
       - "8083:8083"
 
@@ -291,7 +309,10 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: smartwallet
       RABBITMQ_PASSWORD: smartwallet
+      JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt_public_key
 
+    secrets:
+      - jwt_public_key
     ports:
       - "8084:8084"
 
@@ -327,7 +348,10 @@ services:
       BUDGET_SERVICE_URL: http://budget-service:8083
       NOTIFICATION_SERVICE_URL: http://notification-service:8084
       ANALYTICS_SERVICE_URL: http://analytics-service:8085
+      JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt_public_key
 
+    secrets:
+      - jwt_public_key
     ports:
       - "8080:8080"
 
@@ -365,3 +389,10 @@ volumes:
   notification-postgres-data:
   rabbitmq-data:
   analytics-postgres-data:
+
+secrets:
+  jwt_private_key:
+    file: ./secrets/jwt/private.pem
+
+  jwt_public_key:
+    file: ./secrets/jwt/public.pem

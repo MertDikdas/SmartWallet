@@ -15,7 +15,7 @@ spring:
             - id: finance-service
               uri: ${FINANCE_SERVICE_URL:http://localhost:8082}
               predicates:
-                - Path=/api/accounts/**, /api/transactions/**, /api/categories/**
+                - Path=/api/accounts/**, /api/transactions/**, /api/categories/**, /api/transfers/**
 
             - id: budget-service
               uri: ${BUDGET_SERVICE_URL:http://localhost:8083}
@@ -38,7 +38,7 @@ server:
 security:
   jwt:
     issuer: smartwallet-auth-service
-    public-key: classpath:keys/public.pem
+    public-key: ${JWT_PUBLIC_KEY_LOCATION:classpath:keys/public.pem}
 
 management:
   endpoints:

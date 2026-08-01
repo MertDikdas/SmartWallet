@@ -15,14 +15,19 @@ import com.smartwallet.financeservice.outbox.OutboxEventService;
 import com.smartwallet.financeservice.repository.AccountRepository;
 import com.smartwallet.financeservice.repository.CategoryRepository;
 import com.smartwallet.financeservice.repository.FinancialTransactionRepository;
+import com.smartwallet.financeservice.dto.request.TransactionFilterRequest;
+import com.smartwallet.financeservice.dto.response.PageResponse;
+import com.smartwallet.financeservice.specification.TransactionSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -42,7 +47,8 @@ public class TransactionService {
         Account account = accountRepository
                 .findOwnedAccountForUpdate(
                         request.accountId(),
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
                 .orElseThrow(
                         () -> new AccountNotFoundException(
@@ -105,31 +111,38 @@ public class TransactionService {
         return transactionMapper.toResponse(savedTransaction);
     }
 
-    @Transactional(readOnly = true)
-    public List<TransactionResponse> getTransactions(
-            Long userId
-    ) {
-        return transactionRepository
-                .findAllByUserIdOrderByTransactionDateDesc(userId)
-                .stream()
-                .map(transactionMapper::toResponse)
-                .toList();
-    }
 
     @Transactional(readOnly = true)
-    public TransactionResponse getTransaction(
+    public PageResponse<TransactionResponse> getTransactions(
             Long userId,
-            Long transactionId
+            TransactionFilterRequest filter
     ){
-        FinancialTransaction transaction = transactionRepository
-                .findByIdAndUserId(transactionId, userId)
-                .orElseThrow(
-                        ()-> new FinancialTransactionNotFoundException(
-                                transactionId
+        Pageable pageable = PageRequest.of(
+                filter.resolvedPage(),
+                filter.resolvedSize(),
+                Sort.by(
+                        Sort.Direction.DESC,
+                        "transactionDate"
+                ).and(
+                        Sort.by(
+                                Sort.Direction.DESC,
+                                "id"
                         )
-                );
+                )
+        );
 
-        return transactionMapper.toResponse(transaction);
+        Page<TransactionResponse> transactionPage =
+                transactionRepository
+                        .findAll(
+                                TransactionSpecification.withFilters(
+                                        userId,
+                                        filter
+                                ),
+                                pageable
+                        )
+                        .map(transactionMapper::toResponse);
+
+        return PageResponse.from(transactionPage);
     }
 
     @Transactional
@@ -260,7 +273,8 @@ public class TransactionService {
         Account account = accountRepository
                 .findOwnedAccountForUpdate(
                         transaction.getAccount().getId(),
-                        userId
+                        userId,
+                        AccountStatus.ACTIVE
                 )
                 .orElseThrow(
                         () -> new AccountNotFoundException(
@@ -357,7 +371,10 @@ public class TransactionService {
             Long accountId
     ) {
         return accountRepository
-                .findOwnedAccountForUpdate(accountId, userId)
+                .findOwnedAccountForUpdate(
+                        accountId,
+                        userId,
+                        AccountStatus.ACTIVE)
                 .orElseThrow(
                         () -> new AccountNotFoundException(accountId)
                 );
