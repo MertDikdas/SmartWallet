@@ -309,11 +309,43 @@ sys.exit(0 if contains_id else 1)
 PY
 }
 
+recurring_transaction_exists() {
+  local json="$1"
+  local expected_description="$2"
+  local expected_amount="$3"
+
+  JSON_INPUT="$json" python3 - \
+    "$expected_description" \
+    "$expected_amount" <<'PY'
+from decimal import Decimal
+import json
+import os
+import sys
+
+data = json.loads(os.environ["JSON_INPUT"])
+expected_description = sys.argv[1]
+expected_amount = Decimal(sys.argv[2])
+
+content = data.get("content", [])
+
+found = any(
+    isinstance(item, dict)
+    and item.get("description") == expected_description
+    and item.get("type") == "EXPENSE"
+    and Decimal(str(item.get("amount"))) == expected_amount
+    for item in content
+)
+
+sys.exit(0 if found else 1)
+PY
+}
+
 require_command curl
 require_command python3
 
 YEAR="$(date -u +%Y)"
 MONTH_PADDED="$(date -u +%m)"
+TODAY="$(date -u +%Y-%m-%d)"
 MONTH="$((10#$MONTH_PADDED))"
 TRANSACTION_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 RUN_SUFFIX="${GITHUB_RUN_ID:-local}-$(date +%s)-${RANDOM}"
@@ -972,6 +1004,272 @@ json_decimal_equals \
   || fail "Source balance changed after rejected archived-account transfer: ${HTTP_BODY}"
 
 echo "Rejected archived-account transfer did not change balance"
+
+log "Preparing recurring transaction execution test"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+BALANCE_BEFORE_RECURRING="$(
+  json_get "$HTTP_BODY" "balance"
+)"
+
+EXPECTED_BALANCE_AFTER_RECURRING="$(
+  python3 - "$BALANCE_BEFORE_RECURRING" <<'PY'
+from decimal import Decimal
+import sys
+
+balance = Decimal(sys.argv[1])
+result = balance - Decimal("25.00")
+
+print(f"{result:.2f}")
+PY
+)"
+
+RECURRING_DESCRIPTION="E2E recurring expense ${RUN_SUFFIX}"
+
+echo "Balance before recurring transaction: ${BALANCE_BEFORE_RECURRING}"
+
+log "Creating a due recurring transaction"
+
+request POST \
+  "/api/recurring-transactions" \
+  201 \
+  "{
+    \"accountId\": ${ACCOUNT_ID},
+    \"categoryId\": ${CATEGORY_ID},
+    \"type\": \"EXPENSE\",
+    \"amount\": 25.00,
+    \"description\": \"${RECURRING_DESCRIPTION}\",
+    \"frequency\": \"MONTHLY\",
+    \"startDate\": \"${TODAY}\",
+    \"endDate\": null
+  }" \
+  "$PRIMARY_TOKEN"
+
+RECURRING_TRANSACTION_ID="$(
+  json_get "$HTTP_BODY" "id"
+)"
+
+RECURRING_STATUS="$(
+  json_get "$HTTP_BODY" "status"
+)"
+
+[[ -n "$RECURRING_TRANSACTION_ID" ]] \
+  || fail "Recurring transaction id is empty"
+
+[[ "$RECURRING_STATUS" == "ACTIVE" ]] \
+  || fail "New recurring transaction should be ACTIVE: ${HTTP_BODY}"
+
+echo "Recurring transaction id: ${RECURRING_TRANSACTION_ID}"
+
+log "Verifying recurring transaction list"
+
+request GET \
+  "/api/recurring-transactions" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_collection_contains_id \
+  "$HTTP_BODY" \
+  "$RECURRING_TRANSACTION_ID" \
+  || fail "Recurring transaction was not found in list: ${HTTP_BODY}"
+
+echo "Recurring transaction appears in list"
+
+log "Verifying recurring transaction ownership"
+
+request GET \
+  "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}" \
+  404 \
+  "" \
+  "$SECONDARY_TOKEN"
+
+echo "Foreign recurring transaction access correctly rejected"
+
+log "Waiting for recurring transaction scheduler"
+
+RECURRING_EXECUTED=false
+
+for ((attempt = 1; attempt <= POLL_ATTEMPTS; attempt++)); do
+  request GET \
+    "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}" \
+    200 \
+    "" \
+    "$PRIMARY_TOKEN"
+
+  last_execution_date="$(
+    json_get "$HTTP_BODY" "lastExecutionDate"
+  )"
+
+  next_execution_date="$(
+    json_get "$HTTP_BODY" "nextExecutionDate"
+  )"
+
+  echo "Recurring poll ${attempt}/${POLL_ATTEMPTS}: last=${last_execution_date}, next=${next_execution_date}"
+
+  if [[ "$last_execution_date" == "$TODAY" ]]; then
+    RECURRING_EXECUTED=true
+    break
+  fi
+
+  sleep "$POLL_DELAY_SECONDS"
+done
+
+[[ "$RECURRING_EXECUTED" == "true" ]] \
+  || fail "Recurring transaction was not executed in time"
+
+
+log "Waiting for recurring transaction scheduler"
+
+RECURRING_EXECUTED=false
+
+for ((attempt = 1; attempt <= POLL_ATTEMPTS; attempt++)); do
+  request GET \
+    "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}" \
+    200 \
+    "" \
+    "$PRIMARY_TOKEN"
+
+  last_execution_date="$(
+    json_get "$HTTP_BODY" "lastExecutionDate"
+  )"
+
+  next_execution_date="$(
+    json_get "$HTTP_BODY" "nextExecutionDate"
+  )"
+
+  echo "Recurring poll ${attempt}/${POLL_ATTEMPTS}: last=${last_execution_date}, next=${next_execution_date}"
+
+  if [[ "$last_execution_date" == "$TODAY" ]]; then
+    RECURRING_EXECUTED=true
+    break
+  fi
+
+  sleep "$POLL_DELAY_SECONDS"
+done
+
+[[ "$RECURRING_EXECUTED" == "true" ]] \
+  || fail "Recurring transaction was not executed in time"
+
+log "Verifying recurring transaction balance effect"
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "balance" \
+  "$EXPECTED_BALANCE_AFTER_RECURRING" \
+  || fail "Recurring transaction balance is incorrect: ${HTTP_BODY}"
+
+echo "Recurring transaction updated account balance correctly"
+
+
+log "Verifying generated financial transaction"
+
+request GET \
+  "/api/transactions?accountId=${ACCOUNT_ID}&categoryId=${CATEGORY_ID}&type=EXPENSE&page=0&size=50" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+recurring_transaction_exists \
+  "$HTTP_BODY" \
+  "$RECURRING_DESCRIPTION" \
+  "25.00" \
+  || fail "Generated recurring financial transaction was not found: ${HTTP_BODY}"
+
+echo "Recurring plan generated a financial transaction"
+
+
+log "Verifying recurring transaction was not executed twice"
+
+sleep 5
+
+request GET \
+  "/api/accounts/${ACCOUNT_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+json_decimal_equals \
+  "$HTTP_BODY" \
+  "balance" \
+  "$EXPECTED_BALANCE_AFTER_RECURRING" \
+  || fail "Recurring transaction was executed more than once: ${HTTP_BODY}"
+
+echo "Recurring transaction was executed only once"
+
+
+log "Pausing recurring transaction"
+
+request PATCH \
+  "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}/pause" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+[[ "$(json_get "$HTTP_BODY" "status")" == "PAUSED" ]] \
+  || fail "Recurring transaction was not paused: ${HTTP_BODY}"
+
+echo "Recurring transaction paused successfully"
+
+
+log "Resuming recurring transaction"
+
+request PATCH \
+  "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}/resume" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+[[ "$(json_get "$HTTP_BODY" "status")" == "ACTIVE" ]] \
+  || fail "Recurring transaction was not resumed: ${HTTP_BODY}"
+
+echo "Recurring transaction resumed successfully"
+
+
+log "Cancelling recurring transaction"
+
+request DELETE \
+  "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}" \
+  204 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+request GET \
+  "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+[[ "$(json_get "$HTTP_BODY" "status")" == "CANCELLED" ]] \
+  || fail "Recurring transaction was not cancelled: ${HTTP_BODY}"
+
+echo "Recurring transaction cancelled successfully"
+
+
+log "Verifying cancelled recurring transaction cannot be resumed"
+
+request PATCH \
+  "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}/resume" \
+  409 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+echo "Cancelled recurring transaction resume correctly rejected"
+
+
+
+
 
 log "End-to-end flow passed"
 echo "Primary user id : ${PRIMARY_USER_ID}"

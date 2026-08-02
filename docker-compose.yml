@@ -224,6 +224,7 @@ services:
       RABBITMQ_PASSWORD: smartwallet
       JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt_public_key
 
+      RECURRING_TRANSACTION_SCHEDULER_DELAY_MS: 2000
     secrets:
       - jwt_public_key
 

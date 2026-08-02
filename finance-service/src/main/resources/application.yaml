@@ -53,3 +53,7 @@ logging:
 outbox:
   publisher:
     fixed-delay-ms: 2000
+
+app:
+  recurring-transactions:
+    scheduler-delay-ms: ${RECURRING_TRANSACTION_SCHEDULER_DELAY_MS:60000}
