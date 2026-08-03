@@ -1,7 +1,9 @@
 package com.smartwallet.financeservice.controller;
 
 import com.smartwallet.financeservice.dto.request.CreateRecurringTransactionRequest;
+import com.smartwallet.financeservice.dto.response.RecurringTransactionExecutionResponse;
 import com.smartwallet.financeservice.dto.response.RecurringTransactionResponse;
+import com.smartwallet.financeservice.service.RecurringTransactionExecutionQueryService;
 import com.smartwallet.financeservice.service.RecurringTransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,9 @@ public class RecurringTransactionController {
 
     private final RecurringTransactionService
             recurringTransactionService;
+
+    private final RecurringTransactionExecutionQueryService
+            executionQueryService;
 
     @PostMapping
     public ResponseEntity<RecurringTransactionResponse>
@@ -147,5 +152,26 @@ public class RecurringTransactionController {
         return ResponseEntity
                 .noContent()
                 .build();
+    }
+
+    @GetMapping("/{recurringTransactionId}/executions")
+    public ResponseEntity<
+            List<RecurringTransactionExecutionResponse>
+            > getExecutionHistory(
+            @AuthenticationPrincipal Jwt jwt,
+
+            @PathVariable
+            Long recurringTransactionId
+    ) {
+        Long userId =
+                Long.valueOf(jwt.getSubject());
+
+        List<RecurringTransactionExecutionResponse> response =
+                executionQueryService.getExecutionHistory(
+                        userId,
+                        recurringTransactionId
+                );
+
+        return ResponseEntity.ok(response);
     }
 }

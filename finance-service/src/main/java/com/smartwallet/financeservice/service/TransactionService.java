@@ -79,7 +79,6 @@ public class TransactionService {
 
         account.setBalance(newBalance);
 
-        // Bakiyeyi açıkça veritabanına kaydet
         accountRepository.save(account);
 
         FinancialTransaction transaction =
