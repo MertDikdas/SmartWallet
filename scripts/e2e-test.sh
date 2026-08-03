@@ -340,6 +340,33 @@ sys.exit(0 if found else 1)
 PY
 }
 
+execution_history_has_success() {
+  local json="$1"
+  local expected_scheduled_date="$2"
+
+  JSON_INPUT="$json" python3 - \
+    "$expected_scheduled_date" <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["JSON_INPUT"])
+expected_scheduled_date = sys.argv[1]
+
+found = any(
+    isinstance(item, dict)
+    and item.get("scheduledDate") == expected_scheduled_date
+    and item.get("status") == "SUCCESS"
+    and item.get("generatedTransactionId") is not None
+    and item.get("errorMessage") is None
+    and item.get("completedAt") is not None
+    for item in data
+)
+
+sys.exit(0 if found else 1)
+PY
+}
+
 require_command curl
 require_command python3
 
@@ -1123,6 +1150,30 @@ done
 [[ "$RECURRING_EXECUTED" == "true" ]] \
   || fail "Recurring transaction was not executed in time"
 
+log "Verifying recurring transaction execution history"
+
+request GET \
+  "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}/executions" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+execution_history_has_success \
+  "$HTTP_BODY" \
+  "$TODAY" \
+  || fail "Successful execution history was not found: ${HTTP_BODY}"
+
+echo "Successful recurring execution history was returned"
+
+log "Verifying recurring execution history ownership"
+
+request GET \
+  "/api/recurring-transactions/${RECURRING_TRANSACTION_ID}/executions" \
+  404 \
+  "" \
+  "$SECONDARY_TOKEN"
+
+echo "Foreign recurring execution history access correctly rejected"
 
 log "Waiting for recurring transaction scheduler"
 
