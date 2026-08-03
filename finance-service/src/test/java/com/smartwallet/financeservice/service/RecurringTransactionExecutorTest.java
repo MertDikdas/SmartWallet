@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -448,5 +449,235 @@ class RecurringTransactionExecutorTest {
 
         verify(executionRepository, never())
                 .save(any(RecurringTransactionExecution.class));
+    }
+
+    @Test
+    void shouldNotRetryBeforeNextRetryTime() {
+        Long recurringTransactionId = 5L;
+        Long userId = 10L;
+
+        LocalDate executionDate =
+                LocalDate.of(2026, 8, 10);
+
+        RecurringTransaction recurringTransaction =
+                RecurringTransaction.builder()
+                        .id(recurringTransactionId)
+                        .userId(userId)
+                        .status(
+                                RecurringTransactionStatus.ACTIVE
+                        )
+                        .nextExecutionDate(executionDate)
+                        .build();
+
+        RecurringTransactionExecution execution =
+                RecurringTransactionExecution.builder()
+                        .id(20L)
+                        .recurringTransaction(
+                                recurringTransaction
+                        )
+                        .scheduledDate(executionDate)
+                        .status(
+                                RecurringExecutionStatus.FAILED
+                        )
+                        .attemptCount(1)
+                        .nextRetryAt(
+                                Instant.now()
+                                        .plusSeconds(600)
+                        )
+                        .build();
+
+        when(
+                recurringTransactionRepository
+                        .findByIdForUpdate(
+                                recurringTransactionId
+                        )
+        ).thenReturn(
+                Optional.of(recurringTransaction)
+        );
+
+        when(
+                executionRepository.findPeriodForUpdate(
+                        recurringTransactionId,
+                        executionDate
+                )
+        ).thenReturn(
+                Optional.of(execution)
+        );
+
+        recurringTransactionExecutor.execute(
+                recurringTransactionId,
+                executionDate
+        );
+
+        verifyNoInteractions(transactionService);
+
+        verify(
+                executionRepository,
+                never()
+        ).saveAndFlush(
+                any(RecurringTransactionExecution.class)
+        );
+
+        verify(
+                recurringTransactionRepository,
+                never()
+        ).save(any(RecurringTransaction.class));
+
+        assertThat(execution.getStatus())
+                .isEqualTo(
+                        RecurringExecutionStatus.FAILED
+                );
+
+        assertThat(execution.getAttemptCount())
+                .isEqualTo(1);
+
+        assertThat(execution.getNextRetryAt())
+                .isNotNull();
+    }
+
+    @Test
+    void shouldRetryWhenNextRetryTimeHasPassed() {
+        Long recurringTransactionId = 5L;
+        Long userId = 10L;
+
+        LocalDate executionDate =
+                LocalDate.of(2026, 8, 10);
+
+        Account account =
+                Account.builder()
+                        .id(1L)
+                        .build();
+
+        Category category =
+                Category.builder()
+                        .id(2L)
+                        .build();
+
+        RecurringTransaction recurringTransaction =
+                RecurringTransaction.builder()
+                        .id(recurringTransactionId)
+                        .userId(userId)
+                        .account(account)
+                        .category(category)
+                        .type(TransactionType.EXPENSE)
+                        .amount(
+                                new BigDecimal("500.00")
+                        )
+                        .description("Monthly rent")
+                        .frequency(
+                                RecurrenceFrequency.MONTHLY
+                        )
+                        .status(
+                                RecurringTransactionStatus.ACTIVE
+                        )
+                        .startDate(executionDate)
+                        .nextExecutionDate(executionDate)
+                        .build();
+
+        RecurringTransactionExecution execution =
+                RecurringTransactionExecution.builder()
+                        .id(20L)
+                        .recurringTransaction(
+                                recurringTransaction
+                        )
+                        .scheduledDate(executionDate)
+                        .status(
+                                RecurringExecutionStatus.FAILED
+                        )
+                        .attemptCount(1)
+                        .errorMessage(
+                                "Previous failure"
+                        )
+                        .nextRetryAt(
+                                Instant.now()
+                                        .minusSeconds(1)
+                        )
+                        .build();
+
+        TransactionResponse transactionResponse =
+                mock(TransactionResponse.class);
+
+        when(transactionResponse.id())
+                .thenReturn(50L);
+
+        when(
+                recurringTransactionRepository
+                        .findByIdForUpdate(
+                                recurringTransactionId
+                        )
+        ).thenReturn(
+                Optional.of(recurringTransaction)
+        );
+
+        when(
+                executionRepository.findPeriodForUpdate(
+                        recurringTransactionId,
+                        executionDate
+                )
+        ).thenReturn(
+                Optional.of(execution)
+        );
+
+        when(
+                executionRepository.saveAndFlush(
+                        execution
+                )
+        ).thenReturn(execution);
+
+        when(
+                transactionService.createTransaction(
+                        eq(userId),
+                        any(CreateTransactionRequest.class)
+                )
+        ).thenReturn(transactionResponse);
+
+        recurringTransactionExecutor.execute(
+                recurringTransactionId,
+                executionDate
+        );
+
+        verify(transactionService)
+                .createTransaction(
+                        eq(userId),
+                        any(CreateTransactionRequest.class)
+                );
+
+        assertThat(execution.getStatus())
+                .isEqualTo(
+                        RecurringExecutionStatus.SUCCESS
+                );
+
+        assertThat(execution.getAttemptCount())
+                .isEqualTo(1);
+
+        assertThat(execution.getGeneratedTransactionId())
+                .isEqualTo(50L);
+
+        assertThat(execution.getErrorMessage())
+                .isNull();
+
+        assertThat(execution.getNextRetryAt())
+                .isNull();
+
+        assertThat(execution.getCompletedAt())
+                .isNotNull();
+
+        assertThat(
+                recurringTransaction
+                        .getLastExecutionDate()
+        ).isEqualTo(executionDate);
+
+        assertThat(
+                recurringTransaction
+                        .getNextExecutionDate()
+        ).isEqualTo(
+                executionDate.plusMonths(1)
+        );
+
+        verify(executionRepository)
+                .save(execution);
+
+        verify(recurringTransactionRepository)
+                .save(recurringTransaction);
     }
 }

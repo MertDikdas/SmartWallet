@@ -85,9 +85,13 @@ public class RecurringTransactionExecutor {
             RecurringTransactionExecution execution =
                     prepareExecution(
                             recurringTransaction,
-                            scheduledDate
+                            scheduledDate,
+                            Instant.now()
                     );
 
+            if(execution == null) {
+                return;
+            }
             if (execution.getStatus()
                     == RecurringExecutionStatus.SUCCESS) {
 
@@ -141,6 +145,7 @@ public class RecurringTransactionExecutor {
             );
 
             execution.setErrorMessage(null);
+            execution.setNextRetryAt(null);
 
             execution.setCompletedAt(
                     Instant.now()
@@ -177,7 +182,8 @@ public class RecurringTransactionExecutor {
 
     private RecurringTransactionExecution prepareExecution(
             RecurringTransaction recurringTransaction,
-            LocalDate scheduledDate
+            LocalDate scheduledDate,
+            Instant now
     ) {
         RecurringTransactionExecution execution =
                 recurringTransactionExecutionRepository
@@ -200,9 +206,26 @@ public class RecurringTransactionExecutor {
                                         .build()
                         );
 
+
         if (execution.getStatus()
                 == RecurringExecutionStatus.SUCCESS) {
             return execution;
+        }
+
+        if(execution.getStatus()
+                == RecurringExecutionStatus.FAILED
+                && execution.getNextRetryAt() != null
+                && execution.getNextRetryAt().isAfter(now)
+        ){
+            log.debug(
+                    "Recurring transaction retry time has not arrived: recurringId={}, scheduledDate={}, nextRetryAt={}",
+                    recurringTransaction.getId(),
+                    scheduledDate,
+                    execution.getNextRetryAt()
+            );
+
+            return null;
+
         }
 
         execution.setStatus(
@@ -214,6 +237,8 @@ public class RecurringTransactionExecutor {
         execution.setErrorMessage(null);
 
         execution.setCompletedAt(null);
+
+        execution.setNextRetryAt(null);
 
         return recurringTransactionExecutionRepository.saveAndFlush(
                 execution

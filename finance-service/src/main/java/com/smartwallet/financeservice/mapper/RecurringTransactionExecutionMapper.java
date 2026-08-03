@@ -16,6 +16,8 @@ public class RecurringTransactionExecutionMapper {
                 execution.getStatus(),
                 execution.getGeneratedTransactionId(),
                 execution.getErrorMessage(),
+                execution.getAttemptCount(),
+                execution.getNextRetryAt(),
                 execution.getCreatedAt(),
                 execution.getCompletedAt()
         );

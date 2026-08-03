@@ -1,8 +1,10 @@
 package com.smartwallet.financeservice.service;
 
+import com.smartwallet.financeservice.config.RecurringRetryProperties;
 import com.smartwallet.financeservice.entity.RecurringExecutionStatus;
 import com.smartwallet.financeservice.entity.RecurringTransaction;
 import com.smartwallet.financeservice.entity.RecurringTransactionExecution;
+import com.smartwallet.financeservice.entity.RecurringTransactionStatus;
 import com.smartwallet.financeservice.repository.RecurringTransactionExecutionRepository;
 import com.smartwallet.financeservice.repository.RecurringTransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -24,27 +27,29 @@ public class RecurringTransactionExecutionHistoryService {
 
     private final RecurringTransactionRepository recurringTransactionRepository;
 
+    private final RecurringRetryProperties retryProperties;
+
     @Transactional(
             propagation = Propagation.REQUIRES_NEW
     )
     public void recordFailure(
-            Long reccuringTransactionId,
+            Long recurringTransactionId,
             LocalDate scheduledDate,
             Throwable throwable
     ){
         RecurringTransaction recurringTransaction =
                 recurringTransactionRepository.findByIdForUpdate(
-                        reccuringTransactionId
+                        recurringTransactionId
                 ).orElse(null);
 
         if (recurringTransaction == null) {
-            log.warn("Recurring transaction not found for id {}", reccuringTransactionId);
+            log.warn("Recurring transaction not found for id {}", recurringTransactionId);
             return;
         }
 
         RecurringTransactionExecution recurringTransactionExecution =
                 recurringTransactionExecutionRepository.findPeriodForUpdate(
-                        reccuringTransactionId,
+                        recurringTransactionId,
                         scheduledDate
                 ).orElseGet(
                         () -> RecurringTransactionExecution.builder()
@@ -60,6 +65,13 @@ public class RecurringTransactionExecutionHistoryService {
         if(recurringTransactionExecution.getStatus() == RecurringExecutionStatus.SUCCESS) {
             return;
         }
+        Instant now = Instant.now();
+        int nextAttemptCount =
+                recurringTransactionExecution.getAttemptCount() == null
+                        ? 1
+                        : recurringTransactionExecution.getAttemptCount() + 1;
+
+        recurringTransactionExecution.setAttemptCount(nextAttemptCount);
 
         recurringTransactionExecution.setStatus(
                 RecurringExecutionStatus.FAILED
@@ -71,7 +83,36 @@ public class RecurringTransactionExecutionHistoryService {
                 normalizedErrorMessage(throwable)
         );
 
-        recurringTransactionExecution.setCompletedAt(Instant.now());
+        recurringTransactionExecution.setCompletedAt(now);
+
+        if (nextAttemptCount < retryProperties.getMaxAttempts()) {
+            Duration retryDelay =
+                    nextAttemptCount == 1
+                            ? retryProperties.getFirstDelay()
+                            : retryProperties.getSecondDelay();
+
+            recurringTransactionExecution.setNextRetryAt(
+                    now.plus(retryDelay)
+            );
+
+        } else {
+            recurringTransactionExecution.setNextRetryAt(null);
+
+            recurringTransaction.setStatus(
+                    RecurringTransactionStatus.PAUSED
+            );
+
+            recurringTransactionRepository.save(
+                    recurringTransaction
+            );
+
+            log.warn(
+                    "Recurring transaction paused after {} failed attempts: recurringId={}, scheduledDate={}",
+                    nextAttemptCount,
+                    recurringTransactionId,
+                    scheduledDate
+            );
+        }
 
         recurringTransactionExecutionRepository.save(recurringTransactionExecution);
     }
