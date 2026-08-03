@@ -57,3 +57,8 @@ outbox:
 app:
   recurring-transactions:
     scheduler-delay-ms: ${RECURRING_TRANSACTION_SCHEDULER_DELAY_MS:60000}
+
+    retry:
+      max-attempts: ${RECURRING_RETRY_MAX_ATTEMPTS:3}
+      first-delay: ${RECURRING_RETRY_FIRST_DELAY:PT1M}
+      second-delay: ${RECURRING_RETRY_SECOND_DELAY:PT5M}

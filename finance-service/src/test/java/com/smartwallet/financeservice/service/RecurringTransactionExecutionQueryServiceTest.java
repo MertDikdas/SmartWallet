@@ -126,6 +126,8 @@ class RecurringTransactionExecutionQueryServiceTest {
                         RecurringExecutionStatus.FAILED,
                         null,
                         "Account was not found",
+                        2,
+                        Instant.parse("2026-09-10T00:05:00Z"),
                         Instant.parse(
                                 "2026-09-10T00:00:00Z"
                         ),
@@ -144,6 +146,8 @@ class RecurringTransactionExecutionQueryServiceTest {
                         ),
                         RecurringExecutionStatus.SUCCESS,
                         42L,
+                        null,
+                        1,
                         null,
                         Instant.parse(
                                 "2026-08-10T00:00:00Z"

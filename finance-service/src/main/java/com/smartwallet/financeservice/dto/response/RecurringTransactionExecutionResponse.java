@@ -8,17 +8,13 @@ import java.time.LocalDate;
 public record RecurringTransactionExecutionResponse(
 
         Long id,
-
         LocalDate scheduledDate,
-
         RecurringExecutionStatus status,
-
         Long generatedTransactionId,
-
         String errorMessage,
-
+        Integer attemptCount,
+        Instant nextRetryAt,
         Instant createdAt,
-
         Instant completedAt
 
 ) {

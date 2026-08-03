@@ -367,6 +367,44 @@ sys.exit(0 if found else 1)
 PY
 }
 
+execution_history_has_terminal_failure() {
+  local json="$1"
+  local expected_scheduled_date="$2"
+
+  JSON_INPUT="$json" python3 - \
+    "$expected_scheduled_date" <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["JSON_INPUT"])
+expected_scheduled_date = sys.argv[1]
+
+if not isinstance(data, list):
+    sys.exit(1)
+
+matches = [
+    item
+    for item in data
+    if isinstance(item, dict)
+    and item.get("scheduledDate") == expected_scheduled_date
+]
+
+valid = (
+    len(matches) == 1
+    and matches[0].get("status") == "FAILED"
+    and matches[0].get("attemptCount") == 3
+    and matches[0].get("nextRetryAt") is None
+    and matches[0].get("generatedTransactionId") is None
+    and isinstance(matches[0].get("errorMessage"), str)
+    and len(matches[0].get("errorMessage").strip()) > 0
+    and matches[0].get("completedAt") is not None
+)
+
+sys.exit(0 if valid else 1)
+PY
+}
+
 require_command curl
 require_command python3
 
@@ -1318,8 +1356,151 @@ request PATCH \
 
 echo "Cancelled recurring transaction resume correctly rejected"
 
+log "Creating an account for recurring retry testing"
+
+request POST \
+  "/api/accounts" \
+  201 \
+  "{
+    \"name\": \"E2E Recurring Retry Account ${RUN_SUFFIX}\",
+    \"type\": \"CASH\",
+    \"currency\": \"TRY\",
+    \"initialBalance\": 0.00
+  }" \
+  "$PRIMARY_TOKEN"
+
+RETRY_ACCOUNT_ID="$(
+  json_get "$HTTP_BODY" "id"
+)"
+
+[[ -n "$RETRY_ACCOUNT_ID" ]] \
+  || fail "Recurring retry account id is empty"
+
+echo "Recurring retry account id: ${RETRY_ACCOUNT_ID}"
 
 
+log "Creating recurring transaction for retry testing"
+
+RETRY_DESCRIPTION="E2E recurring retry ${RUN_SUFFIX}"
+
+request POST \
+  "/api/recurring-transactions" \
+  201 \
+  "{
+    \"accountId\": ${RETRY_ACCOUNT_ID},
+    \"categoryId\": ${CATEGORY_ID},
+    \"type\": \"EXPENSE\",
+    \"amount\": 25.00,
+    \"description\": \"${RETRY_DESCRIPTION}\",
+    \"frequency\": \"MONTHLY\",
+    \"startDate\": \"${TODAY}\",
+    \"endDate\": null
+  }" \
+  "$PRIMARY_TOKEN"
+
+RETRY_RECURRING_ID="$(
+  json_get "$HTTP_BODY" "id"
+)"
+
+[[ -n "$RETRY_RECURRING_ID" ]] \
+  || fail "Recurring retry plan id is empty"
+
+echo "Recurring retry plan id: ${RETRY_RECURRING_ID}"
+
+
+log "Pausing recurring transaction before fault setup"
+
+request PATCH \
+  "/api/recurring-transactions/${RETRY_RECURRING_ID}/pause" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+[[ "$(json_get "$HTTP_BODY" "status")" == "PAUSED" ]] \
+  || fail "Recurring retry plan was not paused: ${HTTP_BODY}"
+
+
+log "Archiving recurring transaction account"
+
+request DELETE \
+  "/api/accounts/${RETRY_ACCOUNT_ID}" \
+  204 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+echo "Recurring retry account archived"
+
+log "Resuming recurring transaction to trigger retry policy"
+
+request PATCH \
+  "/api/recurring-transactions/${RETRY_RECURRING_ID}/resume" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+[[ "$(json_get "$HTTP_BODY" "status")" == "ACTIVE" ]] \
+  || fail "Recurring retry plan was not resumed: ${HTTP_BODY}"
+
+log "Waiting for recurring retry policy"
+
+RETRY_POLICY_COMPLETED=false
+
+for ((attempt = 1; attempt <= 30; attempt++)); do
+  request GET \
+    "/api/recurring-transactions/${RETRY_RECURRING_ID}" \
+    200 \
+    "" \
+    "$PRIMARY_TOKEN"
+
+  retry_plan_status="$(
+    json_get "$HTTP_BODY" "status"
+  )"
+
+  echo "Retry policy poll ${attempt}/30: status=${retry_plan_status}"
+
+  if [[ "$retry_plan_status" == "PAUSED" ]]; then
+    RETRY_POLICY_COMPLETED=true
+    break
+  fi
+
+  sleep 1
+done
+
+[[ "$RETRY_POLICY_COMPLETED" == "true" ]] \
+  || fail "Recurring transaction was not paused after failed retries"
+
+log "Verifying final recurring retry execution history"
+
+request GET \
+  "/api/recurring-transactions/${RETRY_RECURRING_ID}/executions" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+execution_history_has_terminal_failure \
+  "$HTTP_BODY" \
+  "$TODAY" \
+  || fail "Recurring retry history is incorrect: ${HTTP_BODY}"
+
+echo "Recurring retry history contains three failed attempts"
+
+log "Verifying failed recurring plan generated no transaction"
+
+request GET \
+  "/api/transactions?accountId=${RETRY_ACCOUNT_ID}&type=EXPENSE&page=0&size=50" \
+  200 \
+  "" \
+  "$PRIMARY_TOKEN"
+
+if recurring_transaction_exists \
+  "$HTTP_BODY" \
+  "$RETRY_DESCRIPTION" \
+  "25.00"; then
+
+  fail "Failed recurring plan unexpectedly generated a transaction"
+fi
+
+echo "Failed recurring plan generated no financial transaction"
 
 
 log "End-to-end flow passed"
