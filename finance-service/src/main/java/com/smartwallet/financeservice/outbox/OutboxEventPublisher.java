@@ -1,6 +1,8 @@
 package com.smartwallet.financeservice.outbox;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartwallet.contracts.recurring.RecurringTransactionFailedEvent;
+import com.smartwallet.contracts.recurring.RecurringTransactionMessagingConstants;
 import com.smartwallet.contracts.transaction.TransactionChangedEvent;
 import com.smartwallet.contracts.transaction.TransactionMessagingConstants;
 import com.smartwallet.financeservice.entity.OutboxEvent;
@@ -58,12 +60,38 @@ public class OutboxEventPublisher {
             OutboxEvent outboxEvent
     ) {
         try {
-            TransactionChangedEvent event =
-                    objectMapper.readValue(
-                            outboxEvent.getPayload(),
-                            TransactionChangedEvent.class
-                    );
+            Object event;
+            String exchange;
 
+            switch (outboxEvent.getAggregateType()) {
+
+                case "TRANSACTION" -> {
+                    event =
+                            objectMapper.readValue(
+                                    outboxEvent.getPayload(),
+                                    TransactionChangedEvent.class
+                            );
+
+                    exchange =
+                            TransactionMessagingConstants.EXCHANGE;
+                }
+
+                case "RECURRING_TRANSACTION" -> {
+                    event =
+                            objectMapper.readValue(
+                                    outboxEvent.getPayload(),
+                                    RecurringTransactionFailedEvent.class
+                            );
+
+                    exchange =
+                            RecurringTransactionMessagingConstants.EXCHANGE;
+                }
+
+                default -> throw new IllegalStateException(
+                        "Unsupported outbox aggregate type: "
+                                + outboxEvent.getAggregateType()
+                );
+            }
 
             CorrelationData correlationData =
                     new CorrelationData(
@@ -71,7 +99,7 @@ public class OutboxEventPublisher {
                     );
 
             rabbitTemplate.convertAndSend(
-                    TransactionMessagingConstants.EXCHANGE,
+                    exchange,
                     outboxEvent.getRoutingKey(),
                     event,
 

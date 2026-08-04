@@ -40,11 +40,12 @@ public class Notification {
     @Column(nullable = false, length = 500)
     private String message;
 
-    @Column(name = "budget_id")
-    private Long budgetId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "resource_type", length = 50)
+    private NotificationResourceType resourceType;
 
-    @Column(name = "category_id")
-    private Long categoryId;
+    @Column(name = "resource_id")
+    private Long resourceId;
 
     @Column(
             name = "source_event_id",

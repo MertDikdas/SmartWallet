@@ -40,8 +40,8 @@ public interface NotificationRepository
                     type,
                     title,
                     message,
-                    budget_id,
-                    category_id,
+                    resource_type,
+                    resource_id,
                     source_event_id,
                     is_read,
                     created_at
@@ -52,8 +52,8 @@ public interface NotificationRepository
                     'BUDGET_EXCEEDED',
                     :title,
                     :message,
+                    'BUDGET',
                     :budgetId,
-                    :categoryId,
                     :sourceEventId,
                     FALSE,
                     CURRENT_TIMESTAMP
@@ -67,7 +67,6 @@ public interface NotificationRepository
             @Param("title") String title,
             @Param("message") String message,
             @Param("budgetId") Long budgetId,
-            @Param("categoryId") Long categoryId,
             @Param("sourceEventId") UUID sourceEventId
     );
 
@@ -92,4 +91,51 @@ public interface NotificationRepository
     long countByUserIdAndReadFalse(Long userId);
 
 
+    @Modifying
+    @Query(
+            value = """
+            INSERT INTO notifications
+            (
+                user_id,
+                type,
+                title,
+                message,
+                resource_type,
+                resource_id,
+                source_event_id,
+                is_read,
+                created_at
+            )
+            VALUES
+            (
+                :userId,
+                'RECURRING_TRANSACTION_FAILED',
+                :title,
+                :message,
+                'RECURRING_TRANSACTION',
+                :recurringTransactionId,
+                :sourceEventId,
+                FALSE,
+                CURRENT_TIMESTAMP
+            )
+            ON CONFLICT (source_event_id) DO NOTHING
+            """,
+            nativeQuery = true
+    )
+    int insertRecurringTransactionFailedNotification(
+            @Param("userId")
+            Long userId,
+
+            @Param("title")
+            String title,
+
+            @Param("message")
+            String message,
+
+            @Param("recurringTransactionId")
+            Long recurringTransactionId,
+
+            @Param("sourceEventId")
+            UUID sourceEventId
+    );
 }
