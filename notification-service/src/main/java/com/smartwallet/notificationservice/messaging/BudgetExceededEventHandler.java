@@ -35,7 +35,6 @@ public class BudgetExceededEventHandler {
                         title,
                         message,
                         event.budgetId(),
-                        event.categoryId(),
                         event.eventId()
                 );
     }

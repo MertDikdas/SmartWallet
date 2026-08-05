@@ -1,6 +1,8 @@
 package com.smartwallet.financeservice.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartwallet.contracts.recurring.RecurringTransactionFailedEvent;
+import com.smartwallet.contracts.recurring.RecurringTransactionMessagingConstants;
 import com.smartwallet.contracts.transaction.TransactionMessagingConstants;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
@@ -22,6 +24,16 @@ public class RabbitConfig {
     }
 
     @Bean
+    public TopicExchange recurringTransactionExchange(){
+        return new TopicExchange(
+                RecurringTransactionMessagingConstants.EXCHANGE,
+                true,
+                false
+        );
+
+    }
+
+    @Bean
     public MessageConverter rabbitMessageConverter(
             ObjectMapper objectMapper
     ) {
@@ -32,7 +44,8 @@ public class RabbitConfig {
                 new DefaultJackson2JavaTypeMapper();
 
         typeMapper.setTrustedPackages(
-                "com.smartwallet.contracts.transaction"
+                "com.smartwallet.contracts.transaction",
+                 "com.smartwallet.contracts.recurring"
         );
 
         converter.setJavaTypeMapper(typeMapper);

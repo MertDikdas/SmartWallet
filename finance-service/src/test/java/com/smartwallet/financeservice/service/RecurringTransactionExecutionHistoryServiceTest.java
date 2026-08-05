@@ -1,14 +1,17 @@
 package com.smartwallet.financeservice.service;
 
+import com.smartwallet.contracts.recurring.RecurringTransactionFailedEvent;
 import com.smartwallet.financeservice.config.RecurringRetryProperties;
 import com.smartwallet.financeservice.entity.RecurringExecutionStatus;
 import com.smartwallet.financeservice.entity.RecurringTransaction;
 import com.smartwallet.financeservice.entity.RecurringTransactionExecution;
 import com.smartwallet.financeservice.entity.RecurringTransactionStatus;
+import com.smartwallet.financeservice.outbox.OutboxEventService;
 import com.smartwallet.financeservice.repository.RecurringTransactionExecutionRepository;
 import com.smartwallet.financeservice.repository.RecurringTransactionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -30,6 +33,9 @@ public class RecurringTransactionExecutionHistoryServiceTest {
 
     @Mock
     private RecurringTransactionRepository recurringTransactionRepository;
+
+    @Mock
+    private OutboxEventService outboxEventService;
 
     @Spy
     private RecurringRetryProperties retryProperties =
@@ -124,7 +130,7 @@ public class RecurringTransactionExecutionHistoryServiceTest {
 
         verify(recurringTransactionExecutionRepository)
                 .save(execution);
-
+        verifyNoInteractions(outboxEventService);
         verify(
                 recurringTransactionRepository,
                 never()
@@ -214,6 +220,8 @@ public class RecurringTransactionExecutionHistoryServiceTest {
         verify(recurringTransactionExecutionRepository)
                 .save(execution);
 
+        verifyNoInteractions(outboxEventService);
+
         verify(
                 recurringTransactionRepository,
                 never()
@@ -224,6 +232,7 @@ public class RecurringTransactionExecutionHistoryServiceTest {
     @Test
     void shouldPauseRecurringTransactionAfterThirdFailure() {
         Long recurringTransactionId = 5L;
+        Long userId = 10L;
 
         LocalDate scheduledDate =
                 LocalDate.of(2026, 8, 10);
@@ -231,6 +240,7 @@ public class RecurringTransactionExecutionHistoryServiceTest {
         RecurringTransaction recurringTransaction =
                 RecurringTransaction.builder()
                         .id(recurringTransactionId)
+                        .userId(userId)
                         .status(
                                 RecurringTransactionStatus.ACTIVE
                         )
@@ -319,6 +329,31 @@ public class RecurringTransactionExecutionHistoryServiceTest {
 
         verify(recurringTransactionExecutionRepository)
                 .save(execution);
+
+        ArgumentCaptor<RecurringTransactionFailedEvent>
+                eventCaptor=
+                ArgumentCaptor.forClass(
+                        RecurringTransactionFailedEvent.class
+                );
+
+        verify(outboxEventService).enqueue(eventCaptor.capture());
+
+        RecurringTransactionFailedEvent capturedEvent = eventCaptor.getValue();
+
+        assertThat(capturedEvent.eventId()).isNotNull();
+
+        assertThat(capturedEvent.occurredAt()).isBetween(
+                beforeExecution,
+                afterExecution
+        );
+
+        assertThat(capturedEvent.recurringTransactionId()).isEqualTo(recurringTransactionId);
+        assertThat(capturedEvent.userId()).isEqualTo(userId);
+        assertThat(capturedEvent.scheduledDate()).isEqualTo(scheduledDate);
+        assertThat(capturedEvent.attemptCount()).isEqualTo(3);
+        assertThat(capturedEvent.errorMessage()).isEqualTo("Transaction creation failed");
+
+
     }
 
     @Test

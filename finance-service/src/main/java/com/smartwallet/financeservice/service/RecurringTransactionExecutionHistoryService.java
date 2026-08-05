@@ -1,10 +1,12 @@
 package com.smartwallet.financeservice.service;
 
+import com.smartwallet.contracts.recurring.RecurringTransactionFailedEvent;
 import com.smartwallet.financeservice.config.RecurringRetryProperties;
 import com.smartwallet.financeservice.entity.RecurringExecutionStatus;
 import com.smartwallet.financeservice.entity.RecurringTransaction;
 import com.smartwallet.financeservice.entity.RecurringTransactionExecution;
 import com.smartwallet.financeservice.entity.RecurringTransactionStatus;
+import com.smartwallet.financeservice.outbox.OutboxEventService;
 import com.smartwallet.financeservice.repository.RecurringTransactionExecutionRepository;
 import com.smartwallet.financeservice.repository.RecurringTransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -28,6 +31,8 @@ public class RecurringTransactionExecutionHistoryService {
     private final RecurringTransactionRepository recurringTransactionRepository;
 
     private final RecurringRetryProperties retryProperties;
+
+    private final OutboxEventService outboxEventService;
 
     @Transactional(
             propagation = Propagation.REQUIRES_NEW
@@ -105,6 +110,18 @@ public class RecurringTransactionExecutionHistoryService {
             recurringTransactionRepository.save(
                     recurringTransaction
             );
+            RecurringTransactionFailedEvent event =
+                    new RecurringTransactionFailedEvent(
+                            UUID.randomUUID(),
+                            now,
+                            recurringTransaction.getId(),
+                            recurringTransaction.getUserId(),
+                            scheduledDate,
+                            nextAttemptCount,
+                            recurringTransactionExecution.getErrorMessage()
+                    );
+
+            outboxEventService.enqueue(event);
 
             log.warn(
                     "Recurring transaction paused after {} failed attempts: recurringId={}, scheduledDate={}",
