@@ -1,6 +1,5 @@
 import { Link } from 'react-router'
-import '../App.css'
-import './LoginPage.css'
+import '../styles/Auth.css'
 
 function LoginPage() {
     return (

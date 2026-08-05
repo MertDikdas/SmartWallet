@@ -7,3 +7,73 @@ body {
     min-width: 320px;
     font-family: Arial, sans-serif;
 }
+
+#center {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 40px 8%;
+    background-color: #f8fafc;
+}
+
+.hero {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 60px;
+}
+
+.hero-content {
+    flex: 1;
+}
+
+.hero-content h1 {
+    margin: 0 0 16px;
+    font-size: 64px;
+    color: #14213d;
+}
+
+.hero-content p {
+    margin: 0;
+    font-size: 20px;
+    color: #64748b;
+}
+
+.hero-image {
+    flex: 1;
+}
+
+.hero-image img {
+    display: block;
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+}
+
+@media (max-width: 768px) {
+    #center {
+        padding: 40px 24px;
+    }
+
+    .hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 40px;
+    }
+
+    .hero-content h1 {
+        font-size: 42px;
+    }
+
+    .hero-content p {
+        font-size: 18px;
+    }
+
+    .hero-image img {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+}
+
+

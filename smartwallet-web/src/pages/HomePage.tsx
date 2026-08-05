@@ -1,5 +1,4 @@
 import heroImg from '../assets/hero.png'
-import '../App.css'
 import './HomePage.css'
 import { Link } from 'react-router'
 
