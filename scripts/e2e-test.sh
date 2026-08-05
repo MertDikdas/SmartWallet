@@ -142,21 +142,19 @@ PY
 notification_exists() {
   local json="$1"
   local budget_id="$2"
-  local category_id="$3"
 
-  JSON_INPUT="$json" python3 - "$budget_id" "$category_id" <<'PY'
+  JSON_INPUT="$json" python3 - "$budget_id" <<'PY'
 import json
 import os
 import sys
 
 data = json.loads(os.environ["JSON_INPUT"])
 budget_id = int(sys.argv[1])
-category_id = int(sys.argv[2])
 
 found = any(
     item.get("type") == "BUDGET_EXCEEDED"
-    and item.get("budgetId") == budget_id
-    and item.get("categoryId") == category_id
+    and item.get("resourceType") == "BUDGET"
+    and item.get("resourceId") == budget_id
     for item in data.get("content", [])
 )
 
@@ -803,7 +801,7 @@ for ((attempt = 1; attempt <= POLL_ATTEMPTS; attempt++)); do
 
   echo "Notification poll ${attempt}/${POLL_ATTEMPTS}"
 
-  if notification_exists "$HTTP_BODY" "$BUDGET_ID" "$CATEGORY_ID"; then
+  if notification_exists "$HTTP_BODY" "$BUDGET_ID"; then
     NOTIFICATION_READY=true
     break
   fi
