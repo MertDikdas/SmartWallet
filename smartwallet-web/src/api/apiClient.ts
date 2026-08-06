@@ -1,3 +1,6 @@
+import { getAccessToken } from '../auth/authStorage'
+import { refreshAuthSession } from '../auth/authRefresh'
+
 export type ApiErrorBody = {
     message?: string
     fieldErrors?: Record<string, string>
@@ -15,15 +18,17 @@ export class ApiError extends Error {
 
 export async function apiRequest<T>(
     url: string,
-    options: RequestInit,
+    options: RequestInit = {},
 ): Promise<T> {
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
-    })
+    let accessToken = getAccessToken()
+
+    let response = await sendRequest(url, options, accessToken)
+
+    if (response.status === 401 && accessToken) {
+        accessToken = await refreshAuthSession()
+
+        response = await sendRequest(url, options, accessToken)
+    }
 
     const data = await response.json()
 
@@ -41,4 +46,21 @@ export async function apiRequest<T>(
     }
 
     return data as T
+}
+
+function sendRequest(
+    url: string,
+    options: RequestInit,
+    accessToken: string | null,
+) {
+    return fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken
+                ? { Authorization: `Bearer ${accessToken}` }
+                : {}),
+            ...options.headers,
+        },
+    })
 }
