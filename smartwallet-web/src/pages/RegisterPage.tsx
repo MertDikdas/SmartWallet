@@ -1,11 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { register } from '../api/authApi'
 import '../styles/Auth.css'
-
-type ApiError = {
-    message?: string
-    fieldErrors?: Record<string, string>
-}
 
 function RegisterPage() {
     const navigate = useNavigate()
@@ -23,30 +19,12 @@ function RegisterPage() {
         setIsLoading(true)
 
         try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    firstName,
-                    lastName,
-                    email,
-                    password,
-                }),
+            await register({
+                firstName,
+                lastName,
+                email,
+                password,
             })
-
-            if (!response.ok) {
-                const apiError: ApiError = await response.json()
-
-                const firstFieldError = apiError.fieldErrors
-                    ? Object.values(apiError.fieldErrors)[0]
-                    : undefined
-
-                throw new Error(
-                    firstFieldError ?? apiError.message ?? 'Registration failed',
-                )
-            }
 
             navigate('/login')
         } catch (err) {

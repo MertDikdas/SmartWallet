@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { login } from '../api/authApi'
+import { saveAuthSession } from '../auth/authStorage'
 import '../styles/Auth.css'
 
 function LoginPage() {
@@ -16,28 +18,16 @@ function LoginPage() {
         setIsLoading(true)
 
         try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            })
+            const data = await login({ email, password })
 
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.message ?? 'Email or password is incorrect')
-            }
-
-            sessionStorage.setItem('accessToken', data.accessToken)
-            sessionStorage.setItem('refreshToken', data.refreshToken)
-            sessionStorage.setItem('user', JSON.stringify(data.user))
+            saveAuthSession(data)
 
             navigate('/dashboard')
         } catch (err) {
             setError(
-                err instanceof Error ? err.message : 'An unexpected error occurred',
+                err instanceof Error
+                    ? err.message
+                    : 'An unexpected error occurred',
             )
         } finally {
             setIsLoading(false)
