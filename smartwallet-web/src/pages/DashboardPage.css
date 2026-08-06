@@ -1,0 +1,119 @@
+.dashboard {
+    min-height: 100vh;
+    padding: 40px;
+    color: #0f172a;
+    background-color: #f8fafc;
+}
+
+.dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto 40px;
+}
+
+.dashboard-header h1 {
+    margin: 0 0 8px;
+    color: #14213d;
+    font-size: 2rem;
+}
+
+.dashboard-header p {
+    margin: 0;
+    color: #64748b;
+}
+
+.logout-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    color: #ffffff;
+    background-color: #ef4444;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.logout-button:hover {
+    background-color: #dc2626;
+}
+
+.accounts-section {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.accounts-section h2 {
+    margin-bottom: 20px;
+    color: #14213d;
+}
+
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.account-card {
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background-color: #ffffff;
+    box-shadow: 0 6px 20px rgb(15 23 42 / 6%);
+}
+
+.account-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.account-card h3 {
+    margin: 0;
+    color: #14213d;
+}
+
+.account-card-header span {
+    padding: 5px 10px;
+    border-radius: 999px;
+    color: #15803d;
+    background-color: #dcfce7;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.balance-label {
+    margin: 28px 0 6px;
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.account-balance {
+    color: #0f172a;
+    font-size: 1.75rem;
+}
+
+.empty-state {
+    padding: 40px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 16px;
+    color: #64748b;
+    background-color: #ffffff;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .dashboard {
+        padding: 24px 16px;
+    }
+
+    .dashboard-header {
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    .logout-button {
+        padding: 8px 14px;
+    }
+}
