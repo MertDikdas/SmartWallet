@@ -5,25 +5,36 @@ import {
     saveAuthSession,
 } from './authStorage'
 
+function redirectToLogin(): never {
+    clearAuthSession()
+    window.location.replace('/')
+
+    throw new Error('Your session has expired')
+}
+
 export async function refreshAuthSession(): Promise<string> {
     const refreshToken = getRefreshToken()
 
     if (!refreshToken) {
-        clearAuthSession()
-        throw new Error('Your session has expired')
+        return redirectToLogin()
     }
 
-    const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refreshToken }),
-    })
+    let response: Response
+
+    try {
+        response = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ refreshToken }),
+        })
+    } catch {
+        throw new Error('Could not connect to the server')
+    }
 
     if (!response.ok) {
-        clearAuthSession()
-        throw new Error('Your session has expired')
+        return redirectToLogin()
     }
 
     const data = (await response.json()) as LoginResponse
