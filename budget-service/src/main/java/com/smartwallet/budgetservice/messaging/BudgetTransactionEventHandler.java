@@ -1,9 +1,11 @@
 package com.smartwallet.budgetservice.messaging;
 
 import com.smartwallet.budgetservice.entity.Budget;
+import com.smartwallet.budgetservice.entity.MonthlyCategorySpending;
 import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
 import com.smartwallet.budgetservice.entity.BudgetStatus;
 import com.smartwallet.budgetservice.repository.BudgetRepository;
+import com.smartwallet.budgetservice.repository.MonthlyCategorySpendingRepository;
 import com.smartwallet.budgetservice.repository.ProcessedTransactionEventRepository;
 import com.smartwallet.contracts.transaction.TransactionChangedEvent;
 import com.smartwallet.contracts.transaction.TransactionSnapshot;
@@ -24,6 +26,8 @@ public class BudgetTransactionEventHandler {
 
     private final ProcessedTransactionEventRepository
             processedEventRepository;
+
+    private final MonthlyCategorySpendingRepository monthlyCategorySpendingRepository;
 
     @Transactional
     public void handle(TransactionChangedEvent event) {
@@ -76,7 +80,6 @@ public class BudgetTransactionEventHandler {
             return;
         }
 
-        // Gelirler bütçe harcamasını değiştirmez
         if (!"EXPENSE".equals(snapshot.transactionType())) {
             return;
         }
@@ -86,20 +89,65 @@ public class BudgetTransactionEventHandler {
                         .atZone(ZoneOffset.UTC)
         );
 
-        budgetRepository
+        Budget budget = budgetRepository
                 .findForUpdate(
                         snapshot.userId(),
                         snapshot.categoryId(),
                         period.getYear(),
                         period.getMonthValue()
                 )
-                .ifPresent(budget ->
-                        updateSpentAmount(
-                                budget,
-                                snapshot.amount(),
-                                multiplier
-                        )
-                );
+                .orElse(null);
+
+        if (budget != null) {
+            updateSpentAmount(
+                    budget,
+                    snapshot.amount(),
+                    multiplier
+            );
+        }
+        MonthlyCategorySpending spending = monthlyCategorySpendingRepository
+                .findByUserIdAndCategoryIdAndYearAndMonth(
+                        snapshot.userId(),
+                        snapshot.categoryId(),
+                        period.getYear(),
+                        period.getMonthValue()
+                )
+                .orElse(null);
+
+        if (spending != null) {
+            addMonthlySpending(
+                    spending,
+                    snapshot.amount(),
+                    multiplier
+            );
+        }else {
+            MonthlyCategorySpending newSpending = MonthlyCategorySpending.builder()
+                    .categoryId(snapshot.categoryId())
+                    .userId(snapshot.userId())
+                    .spentAmount(snapshot.amount())
+                    .year(period.getYear())
+                    .month(period.getMonthValue())
+                    .build();
+            monthlyCategorySpendingRepository.save(newSpending);
+        }
+    }
+
+    private void addMonthlySpending(
+            MonthlyCategorySpending monthlyCategorySpending,
+            BigDecimal transactionAmount,
+            BigDecimal multiplier
+    ){
+
+        BigDecimal difference =
+                transactionAmount.multiply(multiplier);
+        BigDecimal newSpentAmount =
+                monthlyCategorySpending.getSpentAmount().add(difference);
+
+        if (newSpentAmount.signum() < 0) {
+            newSpentAmount = BigDecimal.ZERO;
+        }
+
+        monthlyCategorySpending.setSpentAmount(newSpentAmount);
     }
 
     private void updateSpentAmount(

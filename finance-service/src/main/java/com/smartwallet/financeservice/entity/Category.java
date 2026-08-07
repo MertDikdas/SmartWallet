@@ -44,5 +44,6 @@ public class Category {
         if (createdAt == null) {
             createdAt = Instant.now();
         }
+
     }
 }
