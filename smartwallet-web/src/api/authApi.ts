@@ -31,7 +31,7 @@ export type LoginResponse = {
 }
 
 export function register(request: RegisterRequest) {
-    return apiRequest<void>('/api/auth/register', {
+    return apiRequest<User>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(request),
     })
@@ -41,5 +41,12 @@ export function login(request: LoginRequest) {
     return apiRequest<LoginResponse>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify(request),
+    })
+}
+
+export function logout(refreshToken: string) {
+    return apiRequest<void>('/api/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken }),
     })
 }

@@ -1,75 +1,73 @@
-# React + TypeScript + Vite
+# SmartWallet Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Responsive React + TypeScript frontend for the SmartWallet microservice application.
 
-Currently, two official plugins are available:
+## Included flows
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Landing, registration, login, refresh-token handling, and logout
+- Dashboard overview with balances, monthly analytics, category spending, and cash-flow trend
+- Account creation and multi-currency account cards
+- Income/expense transactions and category creation
+- Monthly category budgets with progress and exceeded states
+- Idempotent transfers between accounts with matching currencies
+- Weekly/monthly recurring transactions with pause and resume actions
+- Notification center for exceeded budgets and failed recurring transactions
+- Responsive sidebar, mobile layouts, loading states, empty states, and API errors
 
-## React Compiler
+## Requirements
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js version compatible with the versions in `package.json`
+- SmartWallet API Gateway running on `http://localhost:8080`
 
-## Expanding the ESLint configuration
+## Run locally
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The Vite development server runs on `http://localhost:5173` and proxies `/api` calls to the API Gateway on port `8080`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Environment variable
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Copy `.env.example` to `.env` only when the frontend and gateway are hosted on different origins:
 
+```bash
+cp .env.example .env
 ```
+
+Then set:
+
+```env
+VITE_API_BASE_URL=https://your-api-gateway.example.com
+```
+
+Leave the value empty during normal local development so Vite uses the proxy in `vite.config.ts`.
+
+## Checks
+
+```bash
+npm run lint
+npm run build
+```
+
+## Main structure
+
+```text
+src/
+├── api/          # Backend API functions and response types
+├── auth/         # Token storage, refresh, and protected routes
+├── components/   # Reusable icons and modal
+├── pages/        # Landing, authentication, and dashboard pages
+├── styles/       # Shared authentication styles
+└── utils/        # Currency and date formatting helpers
+```
+
+## Backend routes used
+
+The frontend is aligned with the existing SmartWallet gateway routes:
+
+- `/api/auth`, `/api/users`
+- `/api/accounts`, `/api/categories`, `/api/transactions`
+- `/api/transfers`, `/api/recurring-transactions`
+- `/api/budgets`, `/api/analytics`, `/api/notifications`

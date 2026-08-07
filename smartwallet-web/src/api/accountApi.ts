@@ -11,13 +11,12 @@ export type Currency = 'TRY' | 'USD' | 'EUR'
 export type Account = {
     id: number
     name: string
-    type: string
+    type: AccountType
     balance: number
-    currency: string
+    currency: Currency
     createdAt: string
     updatedAt: string
 }
-
 
 export type CreateAccountRequest = {
     name: string
@@ -34,7 +33,11 @@ export function createAccount(request: CreateAccountRequest) {
 }
 
 export function getAccounts() {
-    return apiRequest<Account[]>('/api/accounts', {
-        method: 'GET',
+    return apiRequest<Account[]>('/api/accounts')
+}
+
+export function deleteAccount(accountId: number) {
+    return apiRequest<void>(`/api/accounts/${accountId}`, {
+        method: 'DELETE',
     })
 }

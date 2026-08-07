@@ -1,79 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
 * {
     box-sizing: border-box;
 }
 
-body {
-    margin: 0;
+html {
     min-width: 320px;
-    font-family: Arial, sans-serif;
+    background: #f8fafc;
+    scroll-behavior: smooth;
 }
 
-#center {
+body {
+    min-width: 320px;
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    padding: 40px 8%;
-    background-color: #f8fafc;
-}
-
-.hero {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 60px;
-}
-
-.hero-content {
-    flex: 1;
-}
-
-.hero-content h1 {
-    margin: 0 0 16px;
-    font-size: 64px;
-    color: #14213d;
-}
-
-.hero-content p {
     margin: 0;
-    font-size: 20px;
-    color: #64748b;
+    font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
 }
 
-.hero-image {
-    flex: 1;
+button,
+a,
+input,
+select {
+    font-family: inherit;
 }
 
-.hero-image img {
-    display: block;
-    width: 100%;
-    max-width: 600px;
-    height: auto;
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 3px solid rgb(34 197 94 / 25%);
+    outline-offset: 2px;
 }
 
-@media (max-width: 768px) {
-    #center {
-        padding: 40px 24px;
-    }
-
-    .hero {
-        flex-direction: column;
-        text-align: center;
-        gap: 40px;
-    }
-
-    .hero-content h1 {
-        font-size: 42px;
-    }
-
-    .hero-content p {
-        font-size: 18px;
-    }
-
-    .hero-image img {
-        max-width: 400px;
-        margin: 0 auto;
-    }
+::selection {
+    color: #07120b;
+    background: #86efac;
 }
-
-

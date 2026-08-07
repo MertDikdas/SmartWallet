@@ -41,17 +41,15 @@ export type CreateTransactionRequest = {
     categoryId: number
     type: TransactionType
     amount: number
-    description: string
+    description?: string
     transactionDate: string
 }
 
-export function getTransactions(
-    filters: TransactionFilters = {},
-) {
+export function getTransactions(filters: TransactionFilters = {}) {
     const searchParams = new URLSearchParams()
 
     Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && value !== '') {
             searchParams.set(key, String(value))
         }
     })
@@ -60,18 +58,18 @@ export function getTransactions(
 
     return apiRequest<PageResponse<Transaction>>(
         `/api/transactions${query ? `?${query}` : ''}`,
-        {
-            method: 'GET',
-        },
     )
 }
 
-
-export function createTransaction(
-    request: CreateTransactionRequest,
-) {
+export function createTransaction(request: CreateTransactionRequest) {
     return apiRequest<Transaction>('/api/transactions', {
         method: 'POST',
         body: JSON.stringify(request),
+    })
+}
+
+export function deleteTransaction(transactionId: number) {
+    return apiRequest<void>(`/api/transactions/${transactionId}`, {
+        method: 'DELETE',
     })
 }
