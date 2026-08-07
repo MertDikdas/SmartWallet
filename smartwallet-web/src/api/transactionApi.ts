@@ -36,6 +36,15 @@ export type TransactionFilters = {
     size?: number
 }
 
+export type UpdateTransactionRequest = {
+    accountId: number
+    categoryId: number
+    type: 'INCOME' | 'EXPENSE'
+    amount: number
+    description: string
+    transactionDate: string
+}
+
 export type CreateTransactionRequest = {
     accountId: number
     categoryId: number
@@ -66,6 +75,19 @@ export function createTransaction(request: CreateTransactionRequest) {
         method: 'POST',
         body: JSON.stringify(request),
     })
+}
+
+export function updateTransaction(
+    transactionId: number,
+    request: UpdateTransactionRequest
+) {
+    return apiRequest<Transaction>(
+        `/api/transactions/${transactionId}`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify(request),
+        }
+    )
 }
 
 export function deleteTransaction(transactionId: number) {

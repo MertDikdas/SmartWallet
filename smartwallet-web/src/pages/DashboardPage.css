@@ -1538,6 +1538,60 @@ button {
     margin-top: 35px;
 }
 
+.transaction-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+
+    padding: 20px 6px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.transaction-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 20px;
+}
+
+.transaction-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transaction-action-button {
+    border: none;
+    background: transparent;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    padding: 8px 12px;
+    border-radius: 8px;
+
+    transition:
+            background 0.15s ease,
+            color 0.15s ease;
+}
+
+.transaction-action-button.edit {
+    color: #14213d;
+}
+
+.transaction-action-button.edit:hover {
+    background: #f1f5f9;
+}
+
+.transaction-action-button.delete {
+    color: #ef4444;
+}
+
+.transaction-action-button.delete:hover {
+    background: #fef2f2;
+}
+
 .skeleton-grid article {
     height: 125px;
 }
@@ -1666,6 +1720,20 @@ button {
         display: none;
     }
 
+    .transaction-delete-button {
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        color: #EF4444;
+    }
+
+    .transaction-delete-button:hover {
+        background: #FEE2E2;
+    }
+
+
     .transfer-row {
         grid-template-columns: auto minmax(0, 1fr) auto;
     }
@@ -1700,6 +1768,17 @@ button {
     .skeleton-grid {
         grid-template-columns: 1fr 1fr;
     }
+    .transaction-row {
+        grid-template-columns: auto 1fr;
+    }
+
+    .transaction-right {
+        grid-column: 2;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+    }
+}
 }
 
 @media (max-width: 460px) {

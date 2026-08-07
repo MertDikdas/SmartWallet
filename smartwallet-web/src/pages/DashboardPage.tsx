@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import {useCallback, useEffect, useMemo, useState, type FormEvent, type ButtonHTMLAttributes} from 'react'
 import { useNavigate } from 'react-router'
 import type { User } from '../api/authApi'
 import { logout } from '../api/authApi'
 import {
     createAccount,
     getAccounts,
+    deleteAccount,
     type Account,
     type AccountType,
     type Currency,
@@ -15,10 +16,10 @@ import {
     type Category,
 } from '../api/categoryApi'
 import {
-    createTransaction,
-    getTransactions,
+    createTransaction, deleteTransaction,
+    getTransactions, updateTransaction,
     type Transaction,
-    type TransactionType,
+    type TransactionType, type UpdateTransactionRequest,
 } from '../api/transactionApi'
 import {
     createBudget,
@@ -125,9 +126,14 @@ function DashboardPage() {
     const [recurring, setRecurring] = useState<RecurringTransaction[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
+    const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
 
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
+
+    const handleEditTransaction = (transaction: Transaction) => {
+        setEditingTransaction(transaction)
+    }
 
     const loadDashboard = useCallback(async () => {
         setIsLoading(true)
@@ -246,6 +252,68 @@ function DashboardPage() {
 
     const accountFor = (accountId: number) =>
         accounts.find((account) => account.id === accountId)
+
+    const handleDeleteAccount = async (accountId: number) => {
+        const confirmed = window.confirm(
+            "Are you sure you want to delete this account?"
+        )
+
+        if (!confirmed) {
+            return
+        }
+
+        try {
+            await deleteAccount(accountId)
+
+            setAccounts(currentAccounts =>
+                currentAccounts.filter(account => account.id !== accountId)
+            )
+        } catch (error) {
+            console.error("Account could not be deleted", error)
+        }
+    }
+
+    const handleDeleteTransaction = async (transactionId: number) => {
+        const confirmed = window.confirm(
+            'Are you sure you want to delete this transaction?'
+        )
+
+        if (!confirmed) return
+
+        try {
+            await deleteTransaction(transactionId)
+
+            setTransactions(current =>
+                current.filter(transaction => transaction.id !== transactionId)
+            )
+        } catch (error) {
+            console.error('Failed to delete transaction:', error)
+        }
+    }
+
+    const handleUpdateTransaction = async (
+        transactionId: number,
+        data: UpdateTransactionRequest
+    ) => {
+        try {
+            const updatedTransaction = await updateTransaction(
+                transactionId,
+                data
+            )
+
+            setTransactions(current =>
+                current.map(transaction =>
+                    transaction.id === transactionId
+                        ? updatedTransaction
+                        : transaction
+                )
+            )
+
+            setEditingTransaction(null)
+        } catch (error) {
+            console.error('Failed to update transaction:', error)
+        }
+    }
 
     async function handleLogout() {
         const refreshToken = getRefreshToken()
@@ -475,6 +543,7 @@ function DashboardPage() {
                         <AccountsView
                             accounts={accounts}
                             onAdd={() => setModal('account')}
+                            onDelete={handleDeleteAccount}
                         />
                     )}
 
@@ -484,6 +553,8 @@ function DashboardPage() {
                             accounts={accounts}
                             onAdd={() => setModal('transaction')}
                             onAddCategory={() => setModal('category')}
+                            onDelete={handleDeleteTransaction}
+                            onEdit={handleEditTransaction}
                         />
                     )}
 
@@ -632,6 +703,36 @@ function DashboardPage() {
                             const created = await createRecurringTransaction(request)
                             setRecurring((current) => [created, ...current])
                             setModal(null)
+                        }}
+                    />
+                </Modal>
+            )}
+            {editingTransaction && (
+                <Modal
+                    title="Edit transaction"
+                    description="Update the details of this transaction."
+                    onClose={() => setEditingTransaction(null)}
+                >
+                    <TransactionForm
+                        accounts={accounts}
+                        categories={categories}
+                        initialValues={editingTransaction}
+                        onCreateCategory={() => setModal('category')}
+                        onSubmit={async (request) => {
+                            const updated = await updateTransaction(
+                                editingTransaction.id,
+                                request
+                            )
+
+                            setTransactions(current =>
+                                current.map(transaction =>
+                                    transaction.id === updated.id
+                                        ? updated
+                                        : transaction
+                                )
+                            )
+
+                            setEditingTransaction(null)
                         }}
                     />
                 </Modal>
@@ -975,7 +1076,9 @@ function PanelHeader({
     )
 }
 
-function AccountsView({ accounts, onAdd }: { accounts: Account[]; onAdd: () => void }) {
+
+
+function AccountsView({ accounts, onAdd, onDelete }: { accounts: Account[]; onAdd: () => void; onDelete: (id: number) => void }) {
     return (
         <>
             <PageHeading
@@ -1002,6 +1105,14 @@ function AccountsView({ accounts, onAdd }: { accounts: Account[]; onAdd: () => v
                                 <span>{account.currency}</span>
                                 <span>•••• {String(account.id).padStart(4, '0')}</span>
                             </footer>
+                            <button
+                                className="button danger"
+                                onClick={() => onDelete(account.id)}
+                            >
+                                Delete Account
+                            </button>
+
+
                         </article>
                     ))}
                 </section>
@@ -1023,11 +1134,15 @@ function TransactionsView({
     accounts,
     onAdd,
     onAddCategory,
+    onDelete,
+    onEdit,
 }: {
     transactions: Transaction[]
     accounts: Account[]
     onAdd: () => void
     onAddCategory: () => void
+    onDelete: (id: number) => void
+    onEdit: (transaction:Transaction) => void
 }) {
     return (
         <>
@@ -1045,6 +1160,8 @@ function TransactionsView({
                 <TransactionList
                     transactions={transactions}
                     accountFor={(id) => accounts.find((account) => account.id === id)}
+                    onDelete={onDelete}
+                    onEdit={onEdit}
                 />
             </section>
         </>
@@ -1052,13 +1169,17 @@ function TransactionsView({
 }
 
 function TransactionList({
-    transactions,
-    accountFor,
-    compact = false,
-}: {
+                             transactions,
+                             accountFor,
+                             compact = false,
+                             onDelete,
+                             onEdit,
+                         }: {
     transactions: Transaction[]
     accountFor: (id: number) => Account | undefined
     compact?: boolean
+    onDelete: (id: number) => void
+    onEdit: (transaction: Transaction) => void,
 }) {
     if (!transactions.length) {
         return (
@@ -1075,28 +1196,71 @@ function TransactionList({
             {transactions.map((transaction) => {
                 const account = accountFor(transaction.accountId)
                 const isIncome = transaction.type === 'INCOME'
+
                 return (
                     <article className="transaction-row" key={transaction.id}>
-                        <span className={`transaction-icon ${isIncome ? 'income' : 'expense'}`}>
-                            <Icon name={isIncome ? 'arrow-down' : 'arrow-up'} size={17} />
-                        </span>
+    <span className={`transaction-icon ${isIncome ? 'income' : 'expense'}`}>
+        <Icon
+            name={isIncome ? 'arrow-down' : 'arrow-up'}
+            size={17}
+        />
+    </span>
+
                         <div className="transaction-description">
-                            <strong>{transaction.description || transaction.categoryName}</strong>
-                            <span>{transaction.categoryName} · {account?.name ?? 'Account'}</span>
+                            <strong>
+                                {transaction.description || transaction.categoryName}
+                            </strong>
+
+                            <span>
+            {transaction.categoryName} · {account?.name ?? 'Account'}
+        </span>
                         </div>
-                        {!compact && (
-                            <span className="transaction-date">{formatDate(transaction.transactionDate)}</span>
-                        )}
-                        <strong className={isIncome ? 'money-positive' : 'money-negative'}>
-                            {isIncome ? '+' : '-'}{formatMoney(transaction.amount, account?.currency ?? 'TRY')}
-                        </strong>
+
+                        <div className="transaction-right">
+                            {!compact && (
+                                <span className="transaction-date">
+                {formatDate(transaction.transactionDate)}
+            </span>
+                            )}
+
+                            <strong
+                                className={
+                                    isIncome
+                                        ? 'money-positive'
+                                        : 'money-negative'
+                                }
+                            >
+                                {isIncome ? '+' : '-'}
+                                {formatMoney(
+                                    transaction.amount,
+                                    account?.currency ?? 'TRY'
+                                )}
+                            </strong>
+
+                            {!compact && (
+                                <div className="transaction-actions">
+                                    <button
+                                        className="transaction-action-button edit"
+                                        onClick={() => onEdit(transaction)}
+                                    >
+                                        Edit
+                                    </button>
+
+                                    <button
+                                        className="transaction-action-button delete"
+                                        onClick={() => onDelete(transaction.id)}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </article>
                 )
             })}
         </div>
     )
 }
-
 function BudgetsView({
     budgets,
     categoryName,
@@ -1464,14 +1628,16 @@ function AccountForm({
 }
 
 function TransactionForm({
-    accounts,
-    categories,
-    onCreateCategory,
-    onSubmit,
-}: {
+                             accounts,
+                             categories,
+                             onCreateCategory,
+                             onSubmit,
+                             initialValues,
+                         }: {
     accounts: Account[]
     categories: Category[]
     onCreateCategory: () => void
+    initialValues?: Transaction
     onSubmit: (request: {
         accountId: number
         categoryId: number
@@ -1481,59 +1647,164 @@ function TransactionForm({
         transactionDate: string
     }) => Promise<void>
 }) {
-    const [accountId, setAccountId] = useState(String(accounts[0]?.id ?? ''))
-    const [type, setType] = useState<TransactionType>('EXPENSE')
-    const [categoryId, setCategoryId] = useState('')
-    const [amount, setAmount] = useState('')
-    const [description, setDescription] = useState('')
-    const [transactionDate, setTransactionDate] = useState(toLocalDateTimeInput())
-    const filteredCategories = categories.filter((category) => category.type === type)
+    const [accountId, setAccountId] = useState(
+        String(initialValues?.accountId ?? accounts[0]?.id ?? '')
+    )
+
+    const [type, setType] = useState<TransactionType>(
+        initialValues?.type ?? 'EXPENSE'
+    )
+
+    const [categoryId, setCategoryId] = useState(
+        String(initialValues?.categoryId ?? '')
+    )
+
+    const [amount, setAmount] = useState(
+        initialValues ? String(initialValues.amount) : ''
+    )
+
+    const [description, setDescription] = useState(
+        initialValues?.description ?? ''
+    )
+
+    const [transactionDate, setTransactionDate] = useState(
+        initialValues
+            ? toLocalDateTimeInputFromIso(initialValues.transactionDate)
+            : toLocalDateTimeInput()
+    )
+
+    const filteredCategories = categories.filter(
+        (category) => category.type === type
+    )
 
     return (
-        <SmartForm onSubmit={() => onSubmit({
-            accountId: Number(accountId),
-            categoryId: Number(categoryId),
-            type,
-            amount: Number(amount),
-            description: description.trim() || undefined,
-            transactionDate: toIsoInstant(transactionDate),
-        })}>
-            {accounts.length === 0 && <FormNotice>No account exists yet. Create an account before recording a transaction.</FormNotice>}
+        <SmartForm
+            onSubmit={() =>
+                onSubmit({
+                    accountId: Number(accountId),
+                    categoryId: Number(categoryId),
+                    type,
+                    amount: Number(amount),
+                    description: description.trim() || undefined,
+                    transactionDate: toIsoInstant(transactionDate),
+                })
+            }
+        >
+            {accounts.length === 0 && (
+                <FormNotice>
+                    No account exists yet. Create an account before recording a transaction.
+                </FormNotice>
+            )}
+
             <div className="form-grid two-columns">
                 <FormField label="Account">
-                    <select value={accountId} required onChange={(event) => setAccountId(event.target.value)}>
+                    <select
+                        value={accountId}
+                        required
+                        onChange={(event) => setAccountId(event.target.value)}
+                    >
                         <option value="">Select account</option>
-                        {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency}</option>)}
+
+                        {accounts.map((account) => (
+                            <option key={account.id} value={account.id}>
+                                {account.name} · {account.currency}
+                            </option>
+                        ))}
                     </select>
                 </FormField>
+
                 <FormField label="Type">
-                    <select value={type} onChange={(event) => { setType(event.target.value as TransactionType); setCategoryId('') }}>
+                    <select
+                        value={type}
+                        onChange={(event) => {
+                            setType(event.target.value as TransactionType)
+                            setCategoryId('')
+                        }}
+                    >
                         <option value="EXPENSE">Expense</option>
                         <option value="INCOME">Income</option>
                     </select>
                 </FormField>
             </div>
-            <FormField label="Category" hint={filteredCategories.length === 0 ? 'No matching category exists.' : undefined}>
+
+            <FormField
+                label="Category"
+                hint={
+                    filteredCategories.length === 0
+                        ? 'No matching category exists.'
+                        : undefined
+                }
+            >
                 <div className="field-with-action">
-                    <select value={categoryId} required onChange={(event) => setCategoryId(event.target.value)}>
+                    <select
+                        value={categoryId}
+                        required
+                        onChange={(event) => setCategoryId(event.target.value)}
+                    >
                         <option value="">Select category</option>
-                        {filteredCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+
+                        {filteredCategories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                                {category.name}
+                            </option>
+                        ))}
                     </select>
-                    <button className="mini-action" type="button" onClick={onCreateCategory}><Icon name="plus" size={16} />New</button>
+
+                    <button
+                        className="mini-action"
+                        type="button"
+                        onClick={onCreateCategory}
+                    >
+                        <Icon name="plus" size={16} />
+                        New
+                    </button>
                 </div>
             </FormField>
+
             <div className="form-grid two-columns">
                 <FormField label="Amount">
-                    <input type="number" min="0.01" step="0.01" value={amount} required placeholder="0.00" onChange={(event) => setAmount(event.target.value)} />
+                    <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={amount}
+                        required
+                        placeholder="0.00"
+                        onChange={(event) => setAmount(event.target.value)}
+                    />
                 </FormField>
+
                 <FormField label="Date and time">
-                    <input type="datetime-local" value={transactionDate} required onChange={(event) => setTransactionDate(event.target.value)} />
+                    <input
+                        type="datetime-local"
+                        value={transactionDate}
+                        required
+                        onChange={(event) =>
+                            setTransactionDate(event.target.value)
+                        }
+                    />
                 </FormField>
             </div>
+
             <FormField label="Description" optional>
-                <input value={description} maxLength={255} placeholder="Coffee, salary, grocery shopping..." onChange={(event) => setDescription(event.target.value)} />
+                <input
+                    value={description}
+                    maxLength={255}
+                    placeholder="Coffee, salary, grocery shopping..."
+                    onChange={(event) =>
+                        setDescription(event.target.value)
+                    }
+                />
             </FormField>
-            <SubmitButton label="Save transaction" disabled={!accounts.length} />
+
+            <SubmitButton
+                label={
+                    initialValues
+                        ? 'Save changes'
+                        : 'Save transaction'
+                }
+                disabled={!accounts.length}
+            />
         </SmartForm>
     )
 }
@@ -1786,6 +2057,195 @@ function FormField({
     )
 }
 
+function EditTransactionModal({
+                                  transaction,
+                                  accounts,
+                                  categories,
+                                  onClose,
+                                  onSave,
+                              }: {
+    transaction: Transaction
+    accounts: Account[]
+    categories: Category[]
+    onClose: () => void
+    onSave: (
+        transactionId: number,
+        data: UpdateTransactionRequest
+    ) => Promise<void>
+}) {
+    const [accountId, setAccountId] = useState(transaction.accountId)
+    const [categoryId, setCategoryId] = useState(transaction.categoryId)
+    const [type, setType] = useState<'INCOME' | 'EXPENSE'>(transaction.type)
+    const [amount, setAmount] = useState(String(transaction.amount))
+    const [description, setDescription] = useState(
+        transaction.description ?? ''
+    )
+
+    const [transactionDate, setTransactionDate] = useState(
+        transaction.transactionDate.slice(0, 10)
+    )
+
+    const handleSubmit = async (event: React.FormEvent) => {
+        event.preventDefault()
+
+        await onSave(transaction.id, {
+            accountId,
+            categoryId,
+            type,
+            amount: Number(amount),
+            description,
+            transactionDate: new Date(transactionDate).toISOString(),
+        })
+    }
+
+    return (
+        <div className="modal-backdrop">
+            <div className="modal">
+                <div className="modal-header">
+                    <div>
+                        <p className="eyebrow">Transaction</p>
+                        <h2>Edit transaction</h2>
+                    </div>
+
+                    <button
+                        type="button"
+                        className="modal-close"
+                        onClick={onClose}
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label>Account</label>
+
+                        <select
+                            value={accountId}
+                            onChange={(event) =>
+                                setAccountId(Number(event.target.value))
+                            }
+                        >
+                            {accounts.map(account => (
+                                <option
+                                    key={account.id}
+                                    value={account.id}
+                                >
+                                    {account.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Category</label>
+
+                        <select
+                            value={categoryId}
+                            onChange={(event) =>
+                                setCategoryId(Number(event.target.value))
+                            }
+                        >
+                            {categories.map(category => (
+                                <option
+                                    key={category.id}
+                                    value={category.id}
+                                >
+                                    {category.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Type</label>
+
+                        <select
+                            value={type}
+                            onChange={(event) =>
+                                setType(
+                                    event.target.value as
+                                        | 'INCOME'
+                                        | 'EXPENSE'
+                                )
+                            }
+                        >
+                            <option value="INCOME">Income</option>
+                            <option value="EXPENSE">Expense</option>
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Amount</label>
+
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={amount}
+                            onChange={(event) =>
+                                setAmount(event.target.value)
+                            }
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Description</label>
+
+                        <input
+                            type="text"
+                            value={description}
+                            onChange={(event) =>
+                                setDescription(event.target.value)
+                            }
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Date</label>
+
+                        <input
+                            type="date"
+                            value={transactionDate}
+                            onChange={(event) =>
+                                setTransactionDate(event.target.value)
+                            }
+                            required
+                        />
+                    </div>
+
+                    <div className="modal-actions">
+                        <button
+                            type="button"
+                            className="button secondary"
+                            onClick={onClose}
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            className="button primary"
+                        >
+                            Save changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )
+}
+
+function toLocalDateTimeInputFromIso(value: string) {
+    const date = new Date(value)
+
+    const offset = date.getTimezoneOffset()
+    const localDate = new Date(
+        date.getTime() - offset * 60 * 1000
+    )
+
+    return localDate.toISOString().slice(0, 16)
+}
 function SubmitButton({ label, disabled = false }: { label: string; disabled?: boolean }) {
     return <button className="button primary form-submit" type="submit" disabled={disabled}>{label}<Icon name="arrow-right" size={17} /></button>
 }

@@ -23,3 +23,9 @@ export function createCategory(request: CreateCategoryRequest) {
         body: JSON.stringify(request),
     })
 }
+
+export function deleteCategory(id: number){
+    return apiRequest<void>(`/api/categories/${id}`, {
+        method: 'DELETE',
+    })
+}
