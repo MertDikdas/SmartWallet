@@ -146,11 +146,11 @@ public class OutboxEventPublisher {
                 );
             }
 
-            if (!confirm.isAck()) {
+            if (!confirm.ack()) {
                 throw new IllegalStateException(
                         "RabbitMQ negatively acknowledged the message. "
                                 + "reason="
-                                + confirm.getReason()
+                                + confirm.reason()
                 );
             }
 

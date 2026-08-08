@@ -13,6 +13,7 @@ import com.smartwallet.financeservice.repository.FinancialTransactionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -90,7 +91,7 @@ class TransactionServiceTest {
 
         when(
                 transactionRepository.findAll(
-                        any(Specification.class),
+                        ArgumentMatchers.<Specification<FinancialTransaction>>any(),
                         any(Pageable.class)
                 )
         ).thenReturn(
@@ -128,7 +129,7 @@ class TransactionServiceTest {
                 ArgumentCaptor.forClass(Pageable.class);
 
         verify(transactionRepository).findAll(
-                any(Specification.class),
+                ArgumentMatchers.<Specification<FinancialTransaction>>any(),
                 pageableCaptor.capture()
         );
 
@@ -177,7 +178,7 @@ class TransactionServiceTest {
 
         when(
                 transactionRepository.findAll(
-                        any(Specification.class),
+                        ArgumentMatchers.<Specification<FinancialTransaction>>any(),
                         any(Pageable.class)
                 )
         ).thenReturn(
@@ -202,7 +203,7 @@ class TransactionServiceTest {
                 ArgumentCaptor.forClass(Pageable.class);
 
         verify(transactionRepository).findAll(
-                any(Specification.class),
+                ArgumentMatchers.<Specification<FinancialTransaction>>any(),
                 pageableCaptor.capture()
         );
 

@@ -55,7 +55,7 @@ Do not infer a cross-service contract from a database table. Service APIs and do
 ### Java and Spring
 
 - Target Java 21.
-- Keep Spring Boot aligned with the versions already used by the service; currently the backend uses Spring Boot `3.5.16`.
+- Keep Spring Boot aligned with the versions already used by the service; currently the backend uses Spring Boot `4.1.0`.
 - Controllers should handle HTTP concerns only: authentication principal, validation, path/query/header extraction, status codes, and response mapping.
 - Put business rules and transaction boundaries in services.
 - Put persistence queries and locking behavior in repositories.

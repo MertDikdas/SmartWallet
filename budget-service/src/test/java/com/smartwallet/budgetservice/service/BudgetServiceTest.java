@@ -10,6 +10,7 @@ import com.smartwallet.budgetservice.exception.InvalidBudgetCategoryException;
 import com.smartwallet.budgetservice.mapper.BudgetMapper;
 import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
 import com.smartwallet.budgetservice.repository.BudgetRepository;
+import com.smartwallet.budgetservice.repository.MonthlyCategorySpendingRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,6 +34,9 @@ public class BudgetServiceTest {
     private BudgetEventOutboxService budgetEventOutboxService;
     @Mock
     private CategoryClient categoryClient;
+
+    @Mock
+    private MonthlyCategorySpendingRepository spendingRepository;
 
     @InjectMocks
     private BudgetService budgetService;

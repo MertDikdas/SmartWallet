@@ -7,13 +7,10 @@ import com.smartwallet.financeservice.exception.CategoryAlreadyExistsException;
 import com.smartwallet.financeservice.exception.CategoryNotFoundException;
 import com.smartwallet.financeservice.mapper.CategoryMapper;
 import com.smartwallet.financeservice.repository.CategoryRepository;
-import com.smartwallet.financeservice.repository.FinancialTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -22,7 +19,6 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
-    private final FinancialTransactionRepository transactionRepository;
 
     @Transactional
     public CategoryResponse createCategory(

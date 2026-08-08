@@ -3,7 +3,6 @@ package com.smartwallet.analyticsservice.service;
 import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
 import com.smartwallet.analyticsservice.dto.response.*;
-import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.repository.TransactionProjectionRepository;
 import lombok.RequiredArgsConstructor;
@@ -108,10 +107,10 @@ public class AnalyticsService {
                                 ProjectionTransactionType.EXPENSE
                         );
         BigDecimal totalExpense = aggregates.stream()
-                .map(CategoryExpenseAggregate::totalExpense)
+                .map(aggregate -> aggregate.totalExpense())
                 .reduce(
                         BigDecimal.ZERO,
-                        BigDecimal::add
+                        (a,b) -> a.add(b)
                 );
         List<CategoryExpenseResponse> categories = aggregates.stream()
                 .map(aggregate ->

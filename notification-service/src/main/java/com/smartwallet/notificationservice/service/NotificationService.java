@@ -16,8 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -32,6 +30,7 @@ public class NotificationService {
             int page,
             int size
     ) {
+        @SuppressWarnings("SPRING_DATA_STRING_PROPERTY_REFERENCE")
         Pageable pageable =
                 PageRequest.of(
                         page,

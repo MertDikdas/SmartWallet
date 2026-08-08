@@ -12,6 +12,7 @@ import com.smartwallet.financeservice.repository.AccountTransferRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -322,7 +323,7 @@ class AccountTransferServiceTest {
 
         when(
                 transferRepository.findAll(
-                        any(Specification.class),
+                        ArgumentMatchers.<Specification<AccountTransfer>>any(),
                         any(Pageable.class)
                 )
         ).thenReturn(
@@ -348,7 +349,7 @@ class AccountTransferServiceTest {
                 ArgumentCaptor.forClass(Pageable.class);
 
         verify(transferRepository).findAll(
-                any(Specification.class),
+                ArgumentMatchers.<Specification<AccountTransfer>>any(),
                 pageableCaptor.capture()
         );
 

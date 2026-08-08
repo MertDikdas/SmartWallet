@@ -15,14 +15,11 @@ import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
 import com.smartwallet.budgetservice.repository.BudgetRepository;
 import com.smartwallet.budgetservice.repository.MonthlyCategorySpendingRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.java.Log;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.Month;
 import java.util.List;
 
 @Slf4j

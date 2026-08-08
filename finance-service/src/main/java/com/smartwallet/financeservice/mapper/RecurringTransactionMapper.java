@@ -2,7 +2,6 @@ package com.smartwallet.financeservice.mapper;
 
 import com.smartwallet.financeservice.dto.response.RecurringTransactionResponse;
 import com.smartwallet.financeservice.entity.RecurringTransaction;
-import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component

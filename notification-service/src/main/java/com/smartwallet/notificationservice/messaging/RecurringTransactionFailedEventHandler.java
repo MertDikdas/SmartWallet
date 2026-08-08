@@ -2,7 +2,6 @@ package com.smartwallet.notificationservice.messaging;
 
 import com.smartwallet.contracts.recurring.RecurringTransactionFailedEvent;
 import com.smartwallet.notificationservice.repository.NotificationRepository;
-import com.smartwallet.notificationservice.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecurringTransactionFailedEventHandler {
 
     private final NotificationRepository notificationRepository;
-    private NotificationService notificationService;
 
     @Transactional
     public void handle(RecurringTransactionFailedEvent event) {

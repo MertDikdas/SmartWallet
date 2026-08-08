@@ -6,13 +6,13 @@ import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.entity.TransactionProjection;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -28,8 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TransactionProjectionRepositoryTest {
 
     @Container
-    static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:16-alpine")
+    static final PostgreSQLContainer postgres =
+            new PostgreSQLContainer("postgres:16-alpine")
                     .withDatabaseName("analytics_test")
                     .withUsername("smartwallet")
                     .withPassword("smartwallet");

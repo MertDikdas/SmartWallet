@@ -1,7 +1,6 @@
 package com.smartwallet.analyticsservice.controller;
 
 import com.smartwallet.analyticsservice.dto.response.*;
-import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
 import com.smartwallet.analyticsservice.service.AnalyticsService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
