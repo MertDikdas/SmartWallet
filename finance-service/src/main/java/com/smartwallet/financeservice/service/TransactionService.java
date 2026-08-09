@@ -121,7 +121,7 @@ public class TransactionService {
                 filter.resolvedPage(),
                 filter.resolvedSize(),
                 Sort.by(
-                        Sort.Order.desc("transactioDate"),
+                        Sort.Order.desc("transactionDate"),
                         Sort.Order.desc("id")
         
                 )

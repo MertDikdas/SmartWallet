@@ -1,6 +1,5 @@
 package com.smartwallet.financeservice.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartwallet.contracts.recurring.RecurringTransactionMessagingConstants;
 import com.smartwallet.contracts.transaction.TransactionMessagingConstants;
 import org.springframework.amqp.core.TopicExchange;
@@ -34,7 +33,6 @@ public class RabbitConfig {
 
     @Bean
     public MessageConverter rabbitMessageConverter(
-            ObjectMapper objectMapper
     ) {
         JacksonJsonMessageConverter converter = 
                 new JacksonJsonMessageConverter();

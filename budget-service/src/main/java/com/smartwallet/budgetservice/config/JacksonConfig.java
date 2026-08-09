@@ -1,4 +1,4 @@
-package com.smartwallet.notificationservice.config;
+package com.smartwallet.budgetservice.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;

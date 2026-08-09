@@ -131,8 +131,10 @@ services:
 
     container_name: smartwallet-analytics-service
     restart: unless-stopped
+    mem_limit: 512m
 
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx320m"
       ANALYTICS_DB_URL: jdbc:postgresql://analytics-postgres:5432/smartwallet_analytics
       ANALYTICS_DB_USERNAME: smartwallet
       ANALYTICS_DB_PASSWORD: smartwallet
@@ -175,7 +177,10 @@ services:
     container_name: smartwallet-auth-service
     restart: unless-stopped
 
+    mem_limit: 512m
+
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx320m"
       AUTH_DB_URL: jdbc:postgresql://auth-postgres:5432/smartwallet_auth
       AUTH_DB_USERNAME: smartwallet
       AUTH_DB_PASSWORD: smartwallet
@@ -213,7 +218,10 @@ services:
     container_name: smartwallet-finance-service
     restart: unless-stopped
 
+    mem_limit: 512m
+
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx320m"
       FINANCE_DB_URL: jdbc:postgresql://finance-postgres:5432/smartwallet_finance
       FINANCE_DB_USERNAME: smartwallet
       FINANCE_DB_PASSWORD: smartwallet
@@ -260,7 +268,10 @@ services:
     container_name: smartwallet-budget-service
     restart: unless-stopped
 
+    mem_limit: 512m
+
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx320m"
       BUDGET_DB_URL: jdbc:postgresql://budget-postgres:5432/smartwallet_budget
       BUDGET_DB_USERNAME: smartwallet
       BUDGET_DB_PASSWORD: smartwallet
@@ -304,7 +315,10 @@ services:
     container_name: smartwallet-notification-service
     restart: unless-stopped
 
+    mem_limit: 512m
+
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx320m"
       NOTIFICATION_DB_URL: jdbc:postgresql://notification-postgres:5432/smartwallet_notification
       NOTIFICATION_DB_USERNAME: smartwallet
       NOTIFICATION_DB_PASSWORD: smartwallet
@@ -346,7 +360,10 @@ services:
     container_name: smartwallet-api-gateway
     restart: unless-stopped
 
+    mem_limit: 512m
+
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx320m"
       AUTH_SERVICE_URL: http://auth-service:8081
       FINANCE_SERVICE_URL: http://finance-service:8082
       BUDGET_SERVICE_URL: http://budget-service:8083
