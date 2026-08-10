@@ -15,7 +15,7 @@ import {
 import {
     createCategory,
     getCategories,
-    type Category,
+    type Category, deleteCategory,
 } from '../api/categoryApi'
 import {
     createTransaction, deleteTransaction,
@@ -79,6 +79,7 @@ type DashboardView =
     | 'overview'
     | 'accounts'
     | 'transactions'
+    | 'categories'
     | 'budgets'
     | 'transfers'
     | 'recurring'
@@ -100,6 +101,7 @@ const navigation: Array<{
     { id: 'overview', label: 'Overview', icon: 'dashboard' },
     { id: 'accounts', label: 'Accounts', icon: 'wallet' },
     { id: 'transactions', label: 'Transactions', icon: 'transaction' },
+    { id: 'categories', label: 'Categories', icon: 'category' },
     { id: 'budgets', label: 'Budgets', icon: 'budget' },
     { id: 'transfers', label: 'Transfers', icon: 'transfer' },
     { id: 'recurring', label: 'Recurring', icon: 'repeat' },
@@ -129,6 +131,7 @@ function DashboardPage() {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+    const [isCreatingTransaction, setIsCreatingTransaction] = useState<boolean | false>(false)
     const [editingAccount, setEditingAccount] = useState<Account | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
@@ -138,6 +141,10 @@ function DashboardPage() {
     }
     const handleEditAccount = (account: Account) => {
         setEditingAccount(account)
+    }
+
+    const handleIsCreatingTransaction = (isCreating: boolean) => {
+        setIsCreatingTransaction(isCreating)
     }
     const loadDashboard = useCallback(async () => {
         setIsLoading(true)
@@ -295,27 +302,20 @@ function DashboardPage() {
         }
     }
 
-    const handleUpdateTransaction = async (
-        transactionId: number,
-        data: UpdateTransactionRequest
-    ) => {
+    const handleDeleteCategory = async (categoryId: number) => {
+        const confirmed = window.confirm(
+            'Are you sure you want to delete this category?'
+        )
+        if (!confirmed) {
+            return
+        }
+
         try {
-            const updatedTransaction = await updateTransaction(
-                transactionId,
-                data
-            )
+            await deleteCategory(categoryId)
 
-            setTransactions(current =>
-                current.map(transaction =>
-                    transaction.id === transactionId
-                        ? updatedTransaction
-                        : transaction
-                )
-            )
-
-            setEditingTransaction(null)
-        } catch (error) {
-            console.error('Failed to update transaction:', error)
+            setCategories(current => current.filter(category => category.id !== categoryId))
+        }catch (error) {
+            console.error('Failed to delete category:', error)
         }
     }
 
@@ -562,6 +562,15 @@ function DashboardPage() {
                             onEdit={handleEditTransaction}
                         />
                     )}
+                    {view === 'categories' && (
+                        <CategoriesView
+                            categories={categories}
+                            onAdd={() => setModal('category')}
+                            onAddCategory={() => setModal('category')}
+                            onDelete={handleDeleteCategory}
+                            onEdit={handleEditTransaction}
+                        />
+                    )}
 
                     {view === 'budgets' && (
                         <BudgetsView
@@ -621,12 +630,18 @@ function DashboardPage() {
                 <Modal
                     title="Add transaction"
                     description="Record income or an expense and keep balances current."
-                    onClose={() => setModal(null)}
+                    onClose={() => {
+                        setModal(null)
+                        handleIsCreatingTransaction(false)
+                    }}
                 >
                     <TransactionForm
                         accounts={accounts}
                         categories={categories}
-                        onCreateCategory={() => setModal('category')}
+                        onCreateCategory={() => {
+                            setModal('category')
+                            handleIsCreatingTransaction(true)
+                        }}
                         onSubmit={async (request) => {
                             await createTransaction(request)
                             const [accountList, transactionPage] = await Promise.all([
@@ -652,7 +667,12 @@ function DashboardPage() {
                         onSubmit={async (request) => {
                             const created = await createCategory(request)
                             setCategories((current) => [...current, created])
-                            setModal('transaction')
+                            if(isCreatingTransaction == true) {
+                                setModal('transaction')
+                            }else {
+                                setModal(null)
+                            }
+
                         }}
                     />
                 </Modal>
@@ -1181,6 +1201,193 @@ function AccountsView({
     )
 }
 
+function CategoriesView({
+                            categories,
+                            onAdd,
+                            onDelete,
+                            onEdit,
+                        }: {
+    categories: Category[];
+    onAdd: () => void;
+    onDelete: (id: number) => void;
+    onEdit: (category: Category) => void;
+}) {
+    const expenseCategories = categories.filter(
+        (category) => category.type === "EXPENSE"
+    );
+
+    const incomeCategories = categories.filter(
+        (category) => category.type === "INCOME"
+    );
+
+    const renderCategory = (category: Category) => (
+        <div className="category-row" key={category.id}>
+            <div className="category-row-left">
+                <div className="category-row-icon">
+                    {category.type === "EXPENSE" ? "−" : "+"}
+                </div>
+
+                <div>
+                    <div className="category-name">
+                        {category.name}
+                    </div>
+                    <div className="category-id">
+                        Category #{category.id}
+                    </div>
+                </div>
+            </div>
+
+            <div className="category-actions">
+                <button
+                    className="category-edit"
+                    onClick={() => onEdit(category)}
+                >
+                    Edit
+                </button>
+
+                <button
+                    className="category-delete"
+                    onClick={() => onDelete(category.id)}
+                >
+                    Delete
+                </button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="categories-page">
+
+            {/* Page Header */}
+            <div className="categories-page-header">
+                <div>
+                    <div className="page-eyebrow">
+                        FINANCIAL MANAGEMENT
+                    </div>
+
+                    <h1>Categories</h1>
+
+                    <p>
+                        Organize your income and expenses by category.
+                    </p>
+                </div>
+
+                <button
+                    className="add-category-button"
+                    onClick={onAdd}
+                >
+                    <span>+</span>
+                    Add category
+                </button>
+            </div>
+
+            {/* Category Panels */}
+            <div className="categories-panels">
+
+                {/* EXPENSE */}
+                <section className="category-panel">
+
+                    <div className="category-panel-header">
+                        <div className="category-panel-title">
+                            <div className="category-panel-icon expense">
+                                ↑
+                            </div>
+
+                            <div>
+                                <h2>Expense categories</h2>
+                                <p>
+                                    Categories for money you spend
+                                </p>
+                            </div>
+                        </div>
+
+                        <span className="category-number">
+                            {expenseCategories.length}
+                        </span>
+                    </div>
+
+                    <div className="category-list">
+                        {expenseCategories.length > 0 ? (
+                            expenseCategories.map(renderCategory)
+                        ) : (
+                            <div className="empty-category">
+                                <div className="empty-category-icon">
+                                    +
+                                </div>
+
+                                <strong>
+                                    No expense categories
+                                </strong>
+
+                                <span>
+                                    Add a category to start organizing
+                                    your expenses.
+                                </span>
+
+                                <button
+                                    onClick={onAdd}
+                                >
+                                    Add category
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                {/* INCOME */}
+                <section className="category-panel">
+
+                    <div className="category-panel-header">
+                        <div className="category-panel-title">
+                            <div className="category-panel-icon income">
+                                ↓
+                            </div>
+
+                            <div>
+                                <h2>Income categories</h2>
+                                <p>
+                                    Categories for money you receive
+                                </p>
+                            </div>
+                        </div>
+
+                        <span className="category-number">
+                            {incomeCategories.length}
+                        </span>
+                    </div>
+
+                    <div className="category-list">
+                        {incomeCategories.length > 0 ? (
+                            incomeCategories.map(renderCategory)
+                        ) : (
+                            <div className="empty-category">
+                                <div className="empty-category-icon">
+                                    +
+                                </div>
+
+                                <strong>
+                                    No income categories
+                                </strong>
+
+                                <span>
+                                    Add a category to start organizing
+                                    your income.
+                                </span>
+
+                                <button
+                                    onClick={onAdd}
+                                >
+                                    Add category
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    );
+}
 function TransactionsView({
     transactions,
     accounts,

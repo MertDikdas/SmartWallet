@@ -4,6 +4,7 @@ export type IconName =
     | 'dashboard'
     | 'wallet'
     | 'transaction'
+    | 'category'
     | 'budget'
     | 'transfer'
     | 'repeat'
@@ -66,6 +67,14 @@ function Icon({ name, size = 20, ...props }: IconProps) {
                 <path d="m18 7-3 3" />
                 <path d="M17 17H6l3 3" />
                 <path d="m6 17 3-3" />
+            </>
+        ),
+        category: (
+            <>
+                <rect x="4" y="4" width="6" height="6" rx="1" />
+                <rect x="14" y="4" width="6" height="6" rx="1" />
+                <rect x="4" y="14" width="6" height="6" rx="1" />
+                <rect x="14" y="14" width="6" height="6" rx="1" />
             </>
         ),
         budget: (

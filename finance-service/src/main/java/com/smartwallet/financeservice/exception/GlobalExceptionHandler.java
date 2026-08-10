@@ -1,6 +1,7 @@
 package com.smartwallet.financeservice.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.executable.ValidateOnExecution;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -279,6 +280,28 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
+                .body(error);
+    }
+
+    @ExceptionHandler(
+            CategoryCannotDeleteBecauseTransactions.class
+    )
+    public  ResponseEntity<ApiError>
+    handleCategoryCannotDeleteBecauseTransactions(
+            CategoryCannotDeleteBecauseTransactions exception,
+            HttpServletRequest request
+    ){
+        ApiError error = new ApiError(
+                Instant.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(error);
     }
 }

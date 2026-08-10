@@ -43,6 +43,9 @@ export async function apiRequest<T>(
     const data = await parseResponse(response)
 
     if (!response.ok) {
+        console.log("API ERROR STATUS:", response.status)
+        console.log("API ERROR BODY:", data)
+
         const error = (data ?? {}) as ApiErrorBody
         const firstFieldError = error.fieldErrors
             ? Object.values(error.fieldErrors)[0]
