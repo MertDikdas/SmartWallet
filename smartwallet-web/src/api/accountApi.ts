@@ -25,6 +25,12 @@ export type CreateAccountRequest = {
     initialBalance: number
 }
 
+export type UpdateAccountRequest = {
+    name: string
+    type: AccountType
+    currency: Currency
+}
+
 export function createAccount(request: CreateAccountRequest) {
     return apiRequest<Account>('/api/accounts', {
         method: 'POST',
@@ -39,5 +45,17 @@ export function getAccounts() {
 export function deleteAccount(accountId: number) {
     return apiRequest<void>(`/api/accounts/${accountId}`, {
         method: 'DELETE',
+    })
+}
+
+export function updateAccount(
+    accountId: number,
+    request: UpdateAccountRequest
+) {
+    console.log("accountId:", accountId);
+    console.log("typeof:", typeof accountId);
+    return apiRequest<Account>(`/api/accounts/${accountId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(request),
     })
 }

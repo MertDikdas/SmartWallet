@@ -6,9 +6,11 @@ import {
     createAccount,
     getAccounts,
     deleteAccount,
+    updateAccount,
     type Account,
     type AccountType,
     type Currency,
+    type UpdateAccountRequest,
 } from '../api/accountApi'
 import {
     createCategory,
@@ -127,14 +129,16 @@ function DashboardPage() {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
-
+    const [editingAccount, setEditingAccount] = useState<Account | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
 
     const handleEditTransaction = (transaction: Transaction) => {
         setEditingTransaction(transaction)
     }
-
+    const handleEditAccount = (account: Account) => {
+        setEditingAccount(account)
+    }
     const loadDashboard = useCallback(async () => {
         setIsLoading(true)
         setError('')
@@ -544,6 +548,7 @@ function DashboardPage() {
                             accounts={accounts}
                             onAdd={() => setModal('account')}
                             onDelete={handleDeleteAccount}
+                            onEdit={handleEditAccount}
                         />
                     )}
 
@@ -734,6 +739,37 @@ function DashboardPage() {
 
                             setEditingTransaction(null)
                         }}
+                    />
+                </Modal>
+            )}
+            {editingAccount && (
+                <Modal
+                    title="Edit Account"
+                    description="Update the details of this account."
+                    onClose={() => setEditingAccount(null)}
+                >
+                    <AccountUpdateForm
+                        initialValues={editingAccount}
+                        onSubmit={async (request: UpdateAccountRequest) => {
+                        try {
+                            const updated = await updateAccount(
+                                editingAccount.id,
+                                request
+                            )
+
+                            setAccounts(current =>
+                                current.map(account =>
+                                    account.id === updated.id
+                                        ? updated
+                                        : account
+                                )
+                            )
+
+                            setEditingAccount(null)
+                        } catch (error) {
+                            console.error('Failed to update transaction:', error)
+                        }
+                    }}
                     />
                 </Modal>
             )}
@@ -1078,7 +1114,17 @@ function PanelHeader({
 
 
 
-function AccountsView({ accounts, onAdd, onDelete }: { accounts: Account[]; onAdd: () => void; onDelete: (id: number) => void }) {
+function AccountsView({
+                          accounts,
+                          onAdd,
+                          onDelete,
+                          onEdit
+}: {
+    accounts: Account[];
+    onAdd: () => void;
+    onDelete: (id: number) => void;
+    onEdit: (account: Account) => void
+}) {
     return (
         <>
             <PageHeading
@@ -1110,6 +1156,12 @@ function AccountsView({ accounts, onAdd, onDelete }: { accounts: Account[]; onAd
                                 onClick={() => onDelete(account.id)}
                             >
                                 Delete Account
+                            </button>
+                            <button
+                                className="button update"
+                                onClick={() => onEdit(account)}
+                            >
+                                Edit Account
                             </button>
 
 
@@ -1623,6 +1675,51 @@ function AccountForm({
                 <input type="number" min="0" step="0.01" value={initialBalance} required onChange={(event) => setInitialBalance(event.target.value)} />
             </FormField>
             <SubmitButton label="Create account" />
+        </SmartForm>
+    )
+}
+
+function AccountUpdateForm({
+                               initialValues,
+                               onSubmit,
+                     }: {
+    initialValues?: Account
+    onSubmit: (request: {
+        name: string
+        type: AccountType
+        currency: Currency
+    }) => Promise<void>,
+}) {
+    const [name, setName] = useState(
+        initialValues?.name ?? ''
+    )
+    const [type, setType] = useState<AccountType>(
+        initialValues?.type ?? 'CHECKING')
+    const [currency, setCurrency] = useState<Currency>(
+        initialValues?.currency ?? 'TRY')
+    return (
+        <SmartForm onSubmit={() => onSubmit({ name: name.trim(), type, currency})}>
+            <FormField label="Account name">
+                <input value={name} maxLength={100} required placeholder="Daily account" onChange={(event) => setName(event.target.value)} />
+            </FormField>
+            <div className="form-grid two-columns">
+                <FormField label="Account type">
+                    <select value={type} onChange={(event) => setType(event.target.value as AccountType)}>
+                        <option value="CHECKING">Checking</option>
+                        <option value="SAVINGS">Savings</option>
+                        <option value="CASH">Cash</option>
+                        <option value="CREDIT_CARD">Credit card</option>
+                    </select>
+                </FormField>
+                <FormField label="Currency">
+                    <select value={currency} onChange={(event) => setCurrency(event.target.value as Currency)}>
+                        <option value="TRY">TRY</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+                </FormField>
+            </div>
+            <SubmitButton label="Update account" />
         </SmartForm>
     )
 }
