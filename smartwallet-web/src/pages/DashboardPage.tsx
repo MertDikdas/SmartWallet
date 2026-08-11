@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState, type FormEvent, type ButtonHTMLAttributes} from 'react'
+import {useCallback, useEffect, useMemo, useState, type FormEvent} from 'react'
 import { useNavigate } from 'react-router'
 import type { User } from '../api/authApi'
 import { logout } from '../api/authApi'
@@ -21,12 +21,14 @@ import {
     createTransaction, deleteTransaction,
     getTransactions, updateTransaction,
     type Transaction,
-    type TransactionType, type UpdateTransactionRequest,
+    type TransactionType,
 } from '../api/transactionApi'
 import {
     createBudget,
     getBudgets,
+    updateBudget,
     type Budget,
+    type UpdateBudgetRequest,
 } from '../api/budgetApi'
 import {
     getMonthlyAnalytics,
@@ -131,6 +133,7 @@ function DashboardPage() {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+    const [editingBudget, setEditingBudget] = useState<Budget | null>(null)
     const [isCreatingTransaction, setIsCreatingTransaction] = useState<boolean | false>(false)
     const [editingAccount, setEditingAccount] = useState<Account | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -142,6 +145,10 @@ function DashboardPage() {
     }
     const handleEditAccount = (account: Account) => {
         setEditingAccount(account)
+    }
+
+    const handleEditBudget = (budget: Budget) => {
+        setEditingBudget(budget)
     }
 
     const handleIsCreatingTransaction = (isCreating: boolean) => {
@@ -573,9 +580,7 @@ function DashboardPage() {
                         <CategoriesView
                             categories={categories}
                             onAdd={() => setModal('category')}
-                            onAddCategory={() => setModal('category')}
                             onDelete={handleDeleteCategory}
-                            onEdit={handleEditTransaction}
                         />
                     )}
 
@@ -585,6 +590,7 @@ function DashboardPage() {
                             categoryName={categoryName}
                             primaryCurrency={primaryCurrency}
                             onAdd={() => setModal('budget')}
+                            onEdit={handleEditBudget}
                         />
                     )}
 
@@ -797,6 +803,37 @@ function DashboardPage() {
                             console.error('Failed to update transaction:', error)
                         }
                     }}
+                    />
+                </Modal>
+            )}
+            {editingBudget && (
+                <Modal
+                    title="Edit Budget"
+                    description="Update the amount of this budget."
+                    onClose={() => setEditingBudget(null)}
+                >
+                    <BudgetUpdateForm
+                        initialValues={editingBudget}
+                        onSubmit={async (request: UpdateBudgetRequest) => {
+                            try {
+                                const updated = await updateBudget(
+                                    editingBudget.id,
+                                    request
+                                )
+
+                                setBudgets(current =>
+                                    current.map(budget =>
+                                        budget.id === updated.id
+                                            ? updated
+                                            : budget
+                                    )
+                                )
+
+                                setEditingBudget(null)
+                            } catch (error) {
+                                console.error('Failed to update budget:', error)
+                            }
+                        }}
                     />
                 </Modal>
             )}
@@ -1215,12 +1252,10 @@ function CategoriesView({
                             categories,
                             onAdd,
                             onDelete,
-                            onEdit,
                         }: {
     categories: Category[];
     onAdd: () => void;
     onDelete: (id: number) => void;
-    onEdit: (category: Category) => void;
 }) {
     const expenseCategories = categories.filter(
         (category) => category.type === "EXPENSE"
@@ -1248,13 +1283,6 @@ function CategoriesView({
             </div>
 
             <div className="category-actions">
-                <button
-                    className="category-edit"
-                    onClick={() => onEdit(category)}
-                >
-                    Edit
-                </button>
-
                 <button
                     className="category-delete"
                     onClick={() => onDelete(category.id)}
@@ -1447,8 +1475,8 @@ function TransactionList({
     transactions: Transaction[]
     accountFor: (id: number) => Account | undefined
     compact?: boolean
-    onDelete: (id: number) => void
-    onEdit: (transaction: Transaction) => void,
+    onDelete?: (id: number) => void
+    onEdit?: (transaction: Transaction) => void,
 }) {
     if (!transactions.length) {
         return (
@@ -1506,7 +1534,7 @@ function TransactionList({
                                 )}
                             </strong>
 
-                            {!compact && (
+                            {!compact && onEdit && onDelete && (
                                 <div className="transaction-actions">
                                     <button
                                         className="transaction-action-button edit"
@@ -1535,11 +1563,13 @@ function BudgetsView({
     categoryName,
     primaryCurrency,
     onAdd,
+    onEdit,
 }: {
     budgets: Budget[]
     categoryName: (id: number) => string
     primaryCurrency: string
     onAdd: () => void
+    onEdit: (budget:Budget) => void
 }) {
     return (
         <>
@@ -1576,6 +1606,12 @@ function BudgetsView({
                                         {formatMoney(budget.remainingAmount, primaryCurrency)} left
                                     </strong>
                                 </footer>
+                                <button
+                                    className="budget-action-button edit"
+                                    onClick={() => onEdit(budget)}
+                                >
+                                    Edit
+                                </button>
                             </article>
                         )
                     })}
@@ -2182,6 +2218,34 @@ function BudgetForm({
     )
 }
 
+function BudgetUpdateForm({
+    initialValues,
+    onSubmit,
+}: {
+    initialValues?: Budget
+    onSubmit: (request: { limitAmount: number }) => Promise<void>
+}) {
+    const [limitAmount, setLimitAmount] = useState(
+        initialValues ? String(initialValues.limitAmount) : ''
+    )
+    return (
+        <SmartForm onSubmit={() => onSubmit({ limitAmount: Number(limitAmount) })}>
+            <FormField label="Monthly limit">
+                <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={limitAmount}
+                    required
+                    placeholder="5000"
+                    onChange={(event) => setLimitAmount(event.target.value)}
+                />
+            </FormField>
+            <SubmitButton label="Update budget" />
+        </SmartForm>
+    )
+}
+
 function TransferForm({
     accounts,
     onSubmit,
@@ -2368,185 +2432,6 @@ function FormField({
             {children}
             {hint && <em>{hint}</em>}
         </label>
-    )
-}
-
-function EditTransactionModal({
-                                  transaction,
-                                  accounts,
-                                  categories,
-                                  onClose,
-                                  onSave,
-                              }: {
-    transaction: Transaction
-    accounts: Account[]
-    categories: Category[]
-    onClose: () => void
-    onSave: (
-        transactionId: number,
-        data: UpdateTransactionRequest
-    ) => Promise<void>
-}) {
-    const [accountId, setAccountId] = useState(transaction.accountId)
-    const [categoryId, setCategoryId] = useState(transaction.categoryId)
-    const [type, setType] = useState<'INCOME' | 'EXPENSE'>(transaction.type)
-    const [amount, setAmount] = useState(String(transaction.amount))
-    const [description, setDescription] = useState(
-        transaction.description ?? ''
-    )
-
-    const [transactionDate, setTransactionDate] = useState(
-        transaction.transactionDate.slice(0, 10)
-    )
-
-    const handleSubmit = async (event: React.FormEvent) => {
-        event.preventDefault()
-
-        await onSave(transaction.id, {
-            accountId,
-            categoryId,
-            type,
-            amount: Number(amount),
-            description,
-            transactionDate: new Date(transactionDate).toISOString(),
-        })
-    }
-
-    return (
-        <div className="modal-backdrop">
-            <div className="modal">
-                <div className="modal-header">
-                    <div>
-                        <p className="eyebrow">Transaction</p>
-                        <h2>Edit transaction</h2>
-                    </div>
-
-                    <button
-                        type="button"
-                        className="modal-close"
-                        onClick={onClose}
-                    >
-                        ×
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label>Account</label>
-
-                        <select
-                            value={accountId}
-                            onChange={(event) =>
-                                setAccountId(Number(event.target.value))
-                            }
-                        >
-                            {accounts.map(account => (
-                                <option
-                                    key={account.id}
-                                    value={account.id}
-                                >
-                                    {account.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Category</label>
-
-                        <select
-                            value={categoryId}
-                            onChange={(event) =>
-                                setCategoryId(Number(event.target.value))
-                            }
-                        >
-                            {categories.map(category => (
-                                <option
-                                    key={category.id}
-                                    value={category.id}
-                                >
-                                    {category.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Type</label>
-
-                        <select
-                            value={type}
-                            onChange={(event) =>
-                                setType(
-                                    event.target.value as
-                                        | 'INCOME'
-                                        | 'EXPENSE'
-                                )
-                            }
-                        >
-                            <option value="INCOME">Income</option>
-                            <option value="EXPENSE">Expense</option>
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Amount</label>
-
-                        <input
-                            type="number"
-                            step="0.01"
-                            value={amount}
-                            onChange={(event) =>
-                                setAmount(event.target.value)
-                            }
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Description</label>
-
-                        <input
-                            type="text"
-                            value={description}
-                            onChange={(event) =>
-                                setDescription(event.target.value)
-                            }
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Date</label>
-
-                        <input
-                            type="date"
-                            value={transactionDate}
-                            onChange={(event) =>
-                                setTransactionDate(event.target.value)
-                            }
-                            required
-                        />
-                    </div>
-
-                    <div className="modal-actions">
-                        <button
-                            type="button"
-                            className="button secondary"
-                            onClick={onClose}
-                        >
-                            Cancel
-                        </button>
-
-                        <button
-                            type="submit"
-                            className="button primary"
-                        >
-                            Save changes
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
     )
 }
 

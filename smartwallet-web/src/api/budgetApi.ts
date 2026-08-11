@@ -22,6 +22,10 @@ export type CreateBudgetRequest = {
     month: number
 }
 
+export type UpdateBudgetRequest = {
+    limitAmount: number
+}
+
 export function getBudgets() {
     return apiRequest<Budget[]>('/api/budgets')
 }
@@ -29,6 +33,13 @@ export function getBudgets() {
 export function createBudget(request: CreateBudgetRequest) {
     return apiRequest<Budget>('/api/budgets', {
         method: 'POST',
+        body: JSON.stringify(request),
+    })
+}
+
+export function updateBudget(budgetId: number, request: UpdateBudgetRequest) {
+    return apiRequest<Budget>(`/api/budgets/${budgetId}`, {
+        method: 'PATCH',
         body: JSON.stringify(request),
     })
 }

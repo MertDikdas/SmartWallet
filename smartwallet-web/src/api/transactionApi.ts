@@ -41,7 +41,7 @@ export type UpdateTransactionRequest = {
     categoryId: number
     type: 'INCOME' | 'EXPENSE'
     amount: number
-    description: string
+    description?: string
     transactionDate: string
 }
 
