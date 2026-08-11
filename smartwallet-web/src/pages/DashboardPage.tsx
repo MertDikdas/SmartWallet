@@ -135,6 +135,7 @@ function DashboardPage() {
     const [editingAccount, setEditingAccount] = useState<Account | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
+    const [actionError, setActionError] = useState('')
 
     const handleEditTransaction = (transaction: Transaction) => {
         setEditingTransaction(transaction)
@@ -316,6 +317,12 @@ function DashboardPage() {
             setCategories(current => current.filter(category => category.id !== categoryId))
         }catch (error) {
             console.error('Failed to delete category:', error)
+
+            setActionError(
+                error instanceof Error
+                    ? error.message
+                    : 'The category could not be deleted.'
+            )
         }
     }
 
@@ -792,6 +799,9 @@ function DashboardPage() {
                     }}
                     />
                 </Modal>
+            )}
+            {actionError && (
+                <p className="form-error">{actionError}</p>
             )}
         </div>
     )

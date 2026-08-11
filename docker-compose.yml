@@ -236,6 +236,8 @@ services:
       RECURRING_RETRY_MAX_ATTEMPTS: 3
       RECURRING_RETRY_FIRST_DELAY: PT2S
       RECURRING_RETRY_SECOND_DELAY: PT2S
+
+      BUDGET_SERVICE_URL: http://budget-service:8083
     secrets:
       - jwt_public_key
 

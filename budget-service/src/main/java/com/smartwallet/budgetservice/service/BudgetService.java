@@ -106,6 +106,18 @@ public class BudgetService {
                 .toList();
     }
 
+    @Transactional
+    public Boolean getBudgetByCategory(
+            Long userId,
+            Long categoryId
+    ){
+        return budgetRepository
+                .existsByUserIdAndCategoryId(
+                        userId,
+                        categoryId
+                );
+    }
+
     @Transactional(readOnly = true)
     public BudgetResponse getBudget(
             Long userId,

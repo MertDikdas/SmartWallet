@@ -1,11 +1,16 @@
 package com.smartwallet.budgetservice.controller;
 
+import com.smartwallet.budgetservice.dto.request.CategoryBudgetRequest;
 import com.smartwallet.budgetservice.dto.request.CreateBudgetRequest;
 import com.smartwallet.budgetservice.dto.request.UpdateBudgetRequest;
 import com.smartwallet.budgetservice.dto.response.BudgetResponse;
 import com.smartwallet.budgetservice.service.BudgetService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Request;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -50,6 +55,19 @@ public class BudgetController {
                 budgetService.getBudgets(userId)
         );
     }
+    @GetMapping("/categories/{categoryId}")
+    public ResponseEntity<Boolean> getBudgetByCategory(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long categoryId
+    ) {
+        Long userId = Long.parseLong(jwt.getSubject());
+
+        Boolean isExists = budgetService.getBudgetByCategory(userId,categoryId);
+        return ResponseEntity
+                .ok(isExists);
+    }
+
+
 
     @GetMapping("/{budgetId}")
     public ResponseEntity<BudgetResponse> getBudget(

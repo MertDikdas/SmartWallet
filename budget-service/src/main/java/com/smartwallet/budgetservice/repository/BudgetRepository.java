@@ -29,6 +29,11 @@ public interface BudgetRepository
             Integer month
     );
 
+    Boolean existsByUserIdAndCategoryId(
+            Long userId,
+            Long categoryId
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT budget

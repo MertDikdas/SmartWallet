@@ -66,8 +66,18 @@ public class CategoryController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long categoryId
     ){
-        Long userId = Long.valueOf(jwt.getSubject());
-        categoryService.deleteCategory(userId,categoryId);
-        return ResponseEntity.noContent().build();
+        Long userId =
+                Long.valueOf(
+                        jwt.getSubject()
+                );
+        categoryService
+                .deleteCategory(
+                        userId,
+                        categoryId,
+                        jwt.getTokenValue()
+                );
+        return ResponseEntity
+                .noContent()
+                .build();
     }
 }
