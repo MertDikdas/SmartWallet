@@ -1,6 +1,7 @@
 package com.smartwallet.analyticsservice.service;
 
 import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
+import com.smartwallet.analyticsservice.dto.projection.DailyCashFlowAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
 import com.smartwallet.analyticsservice.dto.response.*;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
@@ -76,6 +77,62 @@ public class AnalyticsService {
                 totalExpense,
                 totalIncome.subtract(totalExpense),
                 transactionCount
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public DailyCashFlowResponse getDailyExpense(
+            Long userId,
+            int year,
+            int month
+    ) {
+        YearMonth period = YearMonth.of(year, month);
+
+        Instant startDate = period
+                .atDay(1)
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant();
+
+        Instant endDate = period
+                .plusMonths(1)
+                .atDay(1)
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant();
+
+        List<DailyCashFlowAggregate> aggregates =
+                transactionProjectionRepository
+                        .calculateDailyCashFlow(
+                                userId,
+                                startDate,
+                                endDate,
+                                ProjectionTransactionType.INCOME,
+                                ProjectionTransactionType.EXPENSE
+                        );
+
+        BigDecimal totalExpense = aggregates.stream()
+                .map(DailyCashFlowAggregate::totalExpense)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalIncome = aggregates.stream()
+                .map(DailyCashFlowAggregate::totalIncome)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<DailyCashFlowItemResponse> days = aggregates.stream()
+                .map(aggregate ->
+                        new DailyCashFlowItemResponse(
+                                aggregate.day(),
+                                aggregate.totalIncome(),
+                                aggregate.totalExpense()
+                        )
+                )
+                .toList();
+
+        return new DailyCashFlowResponse(
+                year,
+                month,
+                totalIncome,
+                totalExpense,
+                days
         );
     }
 

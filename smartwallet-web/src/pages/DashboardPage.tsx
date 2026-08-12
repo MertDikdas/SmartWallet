@@ -31,9 +31,11 @@ import {
     type UpdateBudgetRequest,
 } from '../api/budgetApi'
 import {
+    getDailyCashFlow,
     getMonthlyAnalytics,
     getMonthlyCategoryAnalytics,
     getMonthlyTrend,
+    type DailyCashFlow,
     type MonthlyAnalytics,
     type MonthlyCategoryAnalytics,
     type MonthlyTrend,
@@ -128,6 +130,7 @@ function DashboardPage() {
     const [categoryAnalytics, setCategoryAnalytics] =
         useState<MonthlyCategoryAnalytics | null>(null)
     const [trend, setTrend] = useState<MonthlyTrend | null>(null)
+    const [dailyCashFlow, setDailyCashFlow] = useState<DailyCashFlow | null>(null)
     const [transfers, setTransfers] = useState<Transfer[]>([])
     const [recurring, setRecurring] = useState<RecurringTransaction[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
@@ -180,6 +183,7 @@ function DashboardPage() {
                     today.getMonth() + 1,
                 ),
                 getMonthlyTrend(6),
+                getDailyCashFlow(today.getFullYear(), today.getMonth() + 1),
                 getTransfers(0, 30),
                 getRecurringTransactions(),
                 getNotifications(false, 0, 20),
@@ -191,6 +195,7 @@ function DashboardPage() {
                 analyticsResult,
                 categoryAnalyticsResult,
                 trendResult,
+                dailyCashFlowResult,
                 transferResult,
                 recurringResult,
                 notificationResult,
@@ -208,6 +213,9 @@ function DashboardPage() {
             }
             if (trendResult.status === 'fulfilled') {
                 setTrend(trendResult.value)
+            }
+            if (dailyCashFlowResult.status === 'fulfilled') {
+                setDailyCashFlow(dailyCashFlowResult.value)
             }
             if (transferResult.status === 'fulfilled') {
                 setTransfers(transferResult.value.content)
@@ -546,6 +554,7 @@ function DashboardPage() {
                             analytics={analytics}
                             categoryAnalytics={categoryAnalytics}
                             trend={trend}
+                            dailyCashFlow={dailyCashFlow}
                             budgets={budgets}
                             transactions={filteredTransactions.slice(0, 6)}
                             categoryName={categoryName}
@@ -872,6 +881,7 @@ interface OverviewProps {
     analytics: MonthlyAnalytics | null
     categoryAnalytics: MonthlyCategoryAnalytics | null
     trend: MonthlyTrend | null
+    dailyCashFlow: DailyCashFlow | null
     budgets: Budget[]
     transactions: Transaction[]
     categoryName: (id: number) => string
@@ -890,6 +900,7 @@ function OverviewView({
     analytics,
     categoryAnalytics,
     trend,
+    dailyCashFlow,
     budgets,
     transactions,
     categoryName,
@@ -899,6 +910,7 @@ function OverviewView({
     onViewTransactions,
     onViewBudgets,
 }: OverviewProps) {
+    const [selectedDay, setSelectedDay] = useState<number | null>(null)
     const savingsRate = analytics?.totalIncome
         ? Math.max((analytics.netAmount / analytics.totalIncome) * 100, 0)
         : 0
@@ -909,7 +921,46 @@ function OverviewView({
         ]) ?? [1]),
         1,
     )
+    const dailyCashFlowDays = useMemo(() => {
+        if (!dailyCashFlow) {
+            return []
+        }
 
+        const daysInMonth = new Date(
+            dailyCashFlow.year,
+            dailyCashFlow.month,
+            0,
+        ).getDate()
+
+        const cashFlowByDay = new Map(
+            dailyCashFlow.days.map((item) => [
+                item.day,
+                {
+                    totalIncome: Number(item.totalIncome),
+                    totalExpense: Number(item.totalExpense),
+                },
+            ]),
+        )
+
+        return Array.from({ length: daysInMonth }, (_, index) => {
+            const day = index + 1
+            const data = cashFlowByDay.get(day)
+
+            return {
+                day,
+                totalIncome: data?.totalIncome ?? 0,
+                totalExpense: data?.totalExpense ?? 0,
+            }
+        })
+    }, [dailyCashFlow])
+
+    const dailyCashFlowMax = Math.max(
+        ...dailyCashFlowDays.flatMap((day) => [
+            day.totalIncome,
+            day.totalExpense,
+        ]),
+        1,
+    )
     return (
         <>
             <section className="page-heading overview-heading">
@@ -1066,6 +1117,156 @@ function OverviewView({
                     )}
                 </article>
             </section>
+            <section className="panel daily-expense-panel">
+                <PanelHeader
+                    title="Daily expenses"
+                    subtitle="Your spending throughout this month"
+                />
+
+                {dailyCashFlow?.days.length ? (
+                    <div className="daily-expense-chart">
+                        <div className="daily-expense-totals">
+                            <div>
+                                <span>Income</span>
+                                <strong>
+                                    {formatCompactMoney(
+                                        dailyCashFlow.totalIncome,
+                                        primaryCurrency,
+                                    )}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>Expense</span>
+                                <strong>
+                                    {formatCompactMoney(
+                                        dailyCashFlow.totalExpense,
+                                        primaryCurrency,
+                                    )}
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div className="daily-expense-bars">
+                            {dailyCashFlowDays.map((item) => {
+                                const income = item.totalIncome
+                                const expense = item.totalExpense
+
+                                return (
+                                    <div
+                                        className="daily-expense-day"
+                                        key={item.day}
+                                    >
+                                        <div className="daily-expense-bar-wrapper">
+
+                                            {/* Income */}
+                                            <button
+                                                type="button"
+                                                className="daily-expense-bar income-bar"
+                                                style={{
+                                                    height:
+                                                        income === 0
+                                                            ? '2px'
+                                                            : `${Math.max(
+                                                                (income / dailyCashFlowMax) * 100,
+                                                                4,
+                                                            )}%`,
+                                                }}
+                                                title={`${item.day}. day Income: ${formatMoney(
+                                                    income,
+                                                    primaryCurrency,
+                                                )}`}
+                                                onClick={() =>
+                                                    setSelectedDay(
+                                                        selectedDay === item.day
+                                                            ? null
+                                                            : item.day,
+                                                    )
+                                                }
+                                            />
+
+                                            {/* Expense */}
+                                            <button
+                                                type="button"
+                                                className="daily-expense-bar expense-bar"
+                                                style={{
+                                                    height:
+                                                        expense === 0
+                                                            ? '2px'
+                                                            : `${Math.max(
+                                                                (expense / dailyCashFlowMax) * 100,
+                                                                4,
+                                                            )}%`,
+                                                }}
+                                                title={`${item.day}. gün Expense: ${formatMoney(
+                                                    expense,
+                                                    primaryCurrency,
+                                                )}`}
+                                                onClick={() =>
+                                                    setSelectedDay(
+                                                        selectedDay === item.day
+                                                            ? null
+                                                            : item.day,
+                                                    )
+                                                }
+                                            />
+
+                                        </div>
+
+                                        <span className="daily-expense-day-label">
+                                            {item.day}
+                                        </span>
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        {selectedDay !== null && (
+                            <div className="daily-expense-details">
+                                <div className="daily-expense-details-header">
+                                    <div>
+                                        <strong>{selectedDay}. day</strong>
+                                        <span>Expenses on this day</span>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className="icon-button"
+                                        onClick={() => setSelectedDay(null)}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+
+                                <TransactionList
+                                    transactions={transactions.filter((transaction) => {
+
+                                        const date = new Date(
+                                            transaction.transactionDate,
+                                        )
+
+                                        return (
+                                            date.getFullYear() === dailyCashFlow.year &&
+                                            date.getMonth() + 1 === dailyCashFlow.month &&
+                                            date.getDate() === selectedDay
+                                        )
+                                    })}
+                                    accountFor={accountFor}
+                                    compact
+                                />
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <EmptyState
+                        icon="chart"
+                        title="No daily expenses"
+                        description="Add expenses to see your daily spending."
+                    />
+                )}
+
+            </section>
+
 
             <section className="overview-lower-grid">
                 <article className="panel transactions-panel">
@@ -1509,17 +1710,15 @@ function TransactionList({
                             </strong>
 
                             <span>
-            {transaction.categoryName} · {account?.name ?? 'Account'}
-        </span>
+        {transaction.categoryName} · {account?.name ?? 'Account'}
+    </span>
+
+                            <small className="transaction-meta">
+                                ID: #{transaction.id} · {formatDate(transaction.transactionDate)}
+                            </small>
                         </div>
 
                         <div className="transaction-right">
-                            {!compact && (
-                                <span className="transaction-date">
-                {formatDate(transaction.transactionDate)}
-            </span>
-                            )}
-
                             <strong
                                 className={
                                     isIncome

@@ -1623,6 +1623,118 @@ button {
     cursor: pointer;
 }
 
+.daily-expense-panel {
+    grid-column: 1 / -1;
+}
+
+.daily-expense-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.daily-expense-total {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.daily-expense-total span {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.daily-expense-total strong {
+    font-size: 24px;
+    color: var(--text-primary);
+}
+
+.daily-expense-bars {
+    height: 220px;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    padding: 0 4px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+}
+
+.daily-expense-day {
+    flex: 1 0 22px;
+    min-width: 22px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.daily-expense-bar-wrapper {
+    width: 100%;
+    height: 190px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.daily-expense-bar {
+    display: block;
+    width: 14px;
+    height: 2px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px 4px 1px 1px;
+    background: #ef4444;
+    cursor: pointer;
+}
+
+.income-bar {
+    background: #22c55e;
+}
+
+.expense-bar {
+    background: #ef4444;
+}
+
+
+.daily-expense-bar:hover {
+    opacity: 0.75;
+}
+
+.daily-expense-bar.selected {
+    transform: scaleX(1.25);
+}
+
+.daily-expense-details {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.daily-expense-details-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.daily-expense-details-header > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.daily-expense-details-header strong {
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.daily-expense-details-header span {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
 .modal-open {
     overflow: hidden;
 }

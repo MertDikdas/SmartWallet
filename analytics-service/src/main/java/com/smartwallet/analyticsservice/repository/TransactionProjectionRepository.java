@@ -1,6 +1,7 @@
 package com.smartwallet.analyticsservice.repository;
 
 import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
+import com.smartwallet.analyticsservice.dto.projection.DailyCashFlowAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.entity.TransactionProjection;
@@ -69,5 +70,41 @@ public interface TransactionProjectionRepository
             @Param("endDate") Instant endDate,
             @Param("expenseType")
             ProjectionTransactionType expenseType
+    );
+
+    @Query("""
+    SELECT new com.smartwallet.analyticsservice.dto.projection.DailyCashFlowAggregate(
+        day(projection.transactionDate),
+
+        SUM(
+            CASE
+                WHEN projection.transactionType = :incomeType
+                THEN projection.amount
+                ELSE 0
+            END
+        ),
+
+        SUM(
+            CASE
+                WHEN projection.transactionType = :expenseType
+                THEN projection.amount
+                ELSE 0
+            END
+        )
+    )
+    FROM TransactionProjection projection
+    WHERE projection.userId = :userId
+      AND projection.transactionDate >= :startDate
+      AND projection.transactionDate < :endDate
+      AND projection.transactionType IN (:incomeType, :expenseType)
+    GROUP BY day(projection.transactionDate)
+    ORDER BY day(projection.transactionDate)
+    """)
+    List<DailyCashFlowAggregate> calculateDailyCashFlow(
+            @Param("userId") Long userId,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
+            @Param("incomeType") ProjectionTransactionType incomeType,
+            @Param("expenseType") ProjectionTransactionType expenseType
     );
 }

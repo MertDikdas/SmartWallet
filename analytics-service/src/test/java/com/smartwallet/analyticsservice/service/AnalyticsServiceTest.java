@@ -1,7 +1,9 @@
 package com.smartwallet.analyticsservice.service;
 
 import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
+import com.smartwallet.analyticsservice.dto.projection.DailyCashFlowAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
+import com.smartwallet.analyticsservice.dto.response.DailyCashFlowResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyCategoryAnalyticsResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyComparisonResponse;
@@ -126,6 +128,105 @@ class AnalyticsServiceTest {
 
         assertThat(response.transactionCount())
                 .isZero();
+    }
+
+    @Test
+    void shouldCalculateDailyExpense() {
+        List<DailyCashFlowAggregate> aggregates =
+                List.of(
+                        new DailyCashFlowAggregate(
+                                1,
+                                new BigDecimal("500.00"),
+                                new BigDecimal("250.00")
+                        ),
+                        new DailyCashFlowAggregate(
+                                5,
+                                new BigDecimal("1000.00"),
+                                new BigDecimal("750.00")
+                        ),
+                        new DailyCashFlowAggregate(
+                                15,
+                                new BigDecimal("2000.00"),
+                                new BigDecimal("1000.00")
+                        )
+                );
+
+        when(
+                transactionProjectionRepository
+                        .calculateDailyCashFlow(
+                                eq(1L),
+                                eq(
+                                        Instant.parse(
+                                                "2026-07-01T00:00:00Z"
+                                        )
+                                ),
+                                eq(
+                                        Instant.parse(
+                                                "2026-08-01T00:00:00Z"
+                                        )
+                                ),
+                                eq(ProjectionTransactionType.INCOME),
+                                eq(ProjectionTransactionType.EXPENSE)
+                        )
+        ).thenReturn(aggregates);
+
+        DailyCashFlowResponse response =
+                analyticsService.getDailyExpense(
+                        1L,
+                        2026,
+                        7
+                );
+
+        assertThat(response.year())
+                .isEqualTo(2026);
+
+        assertThat(response.month())
+                .isEqualTo(7);
+
+        assertThat(response.totalExpense())
+                .isEqualByComparingTo("2000.00");
+
+        assertThat(response.days())
+                .hasSize(3);
+
+        assertThat(response.days().get(0).day())
+                .isEqualTo(1);
+
+        assertThat(response.days().get(0).totalExpense())
+                .isEqualByComparingTo("250.00");
+
+        assertThat(response.days().get(2).day())
+                .isEqualTo(15);
+
+        assertThat(response.days().get(2).totalExpense())
+                .isEqualByComparingTo("1000.00");
+    }
+
+    @Test
+    void shouldReturnEmptyDailyExpenseWhenThereAreNoExpenses() {
+        when(
+                transactionProjectionRepository
+                        .calculateDailyCashFlow(
+                                eq(1L),
+                                any(Instant.class),
+                                any(Instant.class),
+                                eq(ProjectionTransactionType.INCOME),
+                                eq(ProjectionTransactionType.EXPENSE)
+                        )
+        ).thenReturn(List.of());
+
+        DailyCashFlowResponse response =
+                analyticsService.getDailyExpense(
+                        1L,
+                        2026,
+                        7
+                );
+
+        assertThat(response.totalExpense())
+                .isEqualByComparingTo(BigDecimal.ZERO);
+
+        assertThat(response.days())
+                .isEmpty();
     }
 
     @Test

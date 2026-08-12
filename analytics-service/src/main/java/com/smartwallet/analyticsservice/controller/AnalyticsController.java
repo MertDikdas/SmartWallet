@@ -43,6 +43,30 @@ public class AnalyticsController {
         );
     }
 
+    @GetMapping("/daily-expense")
+    public ResponseEntity<DailyCashFlowResponse> getDailyExpense(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam
+            @Min(value = 2000)
+            int year,
+            @RequestParam
+            @Min(value = 1)
+            @Max(value = 12)
+            int month
+    ) {
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        DailyCashFlowResponse response =
+                analyticsService.getDailyExpense(
+                        userId,
+                        year,
+                        month
+                );
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/monthly/categories")
     public ResponseEntity<MonthlyCategoryAnalyticsResponse> getMonthlyCategoryAnalytics(
             @AuthenticationPrincipal Jwt jwt,

@@ -37,6 +37,26 @@ export type MonthlyTrend = {
     months: MonthlyTrendItem[]
 }
 
+export type DailyExpenseItem = {
+    day: number
+    totalIncome: number
+    totalExpense: number
+}
+
+export type DailyCashFlow = {
+    year: number
+    month: number
+    totalIncome: number
+    totalExpense: number
+    days: DailyExpenseItem[]
+}
+
+export function getDailyCashFlow(year: number, month: number) {
+    return apiRequest<DailyCashFlow>(
+        `/api/analytics/daily-expense?year=${year}&month=${month}`,
+    )
+}
+
 export function getMonthlyAnalytics(year: number, month: number) {
     return apiRequest<MonthlyAnalytics>(
         `/api/analytics/monthly?year=${year}&month=${month}`,
