@@ -9,6 +9,11 @@ import org.springframework.web.client.RestClient;
 public class RestClientConfig {
 
     @Bean
+    public RestClient.Builder restClientBuilder() {
+        return RestClient.builder();
+    }
+
+    @Bean
     public RestClient financeRestClient(
             RestClient.Builder builder,
             @Value("${services.finance.base-url}")

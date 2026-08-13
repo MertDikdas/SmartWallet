@@ -1,7 +1,9 @@
 package com.smartwallet.financeservice.scheduler;
 
 import com.smartwallet.financeservice.entity.RecurringTransactionStatus;
+import com.smartwallet.financeservice.exception.RecurringTransactionExecutionException;
 import com.smartwallet.financeservice.repository.RecurringTransactionRepository;
+import com.smartwallet.financeservice.service.RecurringTransactionExecutionHistoryService;
 import com.smartwallet.financeservice.service.RecurringTransactionExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,9 @@ public class RecurringTransactionScheduler {
 
     private final RecurringTransactionExecutor
             recurringTransactionExecutor;
+
+    private final RecurringTransactionExecutionHistoryService
+            executionHistoryService;
 
     @Scheduled(
             fixedDelayString =
@@ -63,12 +68,40 @@ public class RecurringTransactionScheduler {
                         today
                 );
 
-            } catch (Exception exception) {
-                /*
-                 * Bir planın hatası scheduler döngüsünü durdurmasın.
-                 */
+            } catch (
+                    RecurringTransactionExecutionException exception
+            ) {
+                Throwable originalCause =
+                        exception.getCause() != null
+                                ? exception.getCause()
+                                : exception;
+
+                try {
+                    executionHistoryService.recordFailure(
+                            exception.getRecurringTransactionId(),
+                            exception.getScheduledDate(),
+                            originalCause
+                    );
+
+                } catch (Exception historyException) {
+                    log.error(
+                            "Recurring transaction failure history could not be saved: recurringId={}, scheduledDate={}",
+                            exception.getRecurringTransactionId(),
+                            exception.getScheduledDate(),
+                            historyException
+                    );
+                }
+
                 log.error(
-                        "Recurring transaction execution failed: recurringId={}",
+                        "Recurring transaction execution failed: recurringId={}, scheduledDate={}",
+                        exception.getRecurringTransactionId(),
+                        exception.getScheduledDate(),
+                        originalCause
+                );
+
+            } catch (Exception exception) {
+                log.error(
+                        "Unexpected recurring transaction scheduler error: recurringId={}",
                         recurringTransactionId,
                         exception
                 );

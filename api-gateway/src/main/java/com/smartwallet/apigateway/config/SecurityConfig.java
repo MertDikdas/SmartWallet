@@ -23,7 +23,7 @@ public class SecurityConfig {
                     jwtAuthenticationConverter
     ) {
         return http
-                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .csrf(csrf -> csrf.disable())
 
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(

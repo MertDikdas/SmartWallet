@@ -1,13 +1,13 @@
 package com.smartwallet.financeservice.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartwallet.contracts.recurring.RecurringTransactionMessagingConstants;
 import com.smartwallet.contracts.transaction.TransactionMessagingConstants;
 import org.springframework.amqp.core.TopicExchange;
-import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.amqp.support.converter.DefaultJacksonJavaTypeMapper;
 
 @Configuration
 public class RabbitConfig {
@@ -22,17 +22,28 @@ public class RabbitConfig {
     }
 
     @Bean
-    public MessageConverter rabbitMessageConverter(
-            ObjectMapper objectMapper
-    ) {
-        Jackson2JsonMessageConverter converter =
-                new Jackson2JsonMessageConverter(objectMapper);
+    public TopicExchange recurringTransactionExchange(){
+        return new TopicExchange(
+                RecurringTransactionMessagingConstants.EXCHANGE,
+                true,
+                false
+        );
 
-        DefaultJackson2JavaTypeMapper typeMapper =
-                new DefaultJackson2JavaTypeMapper();
+    }
+
+    @Bean
+    public MessageConverter rabbitMessageConverter(
+    ) {
+        JacksonJsonMessageConverter converter = 
+                new JacksonJsonMessageConverter();
+
+        
+        DefaultJacksonJavaTypeMapper typeMapper =
+                new DefaultJacksonJavaTypeMapper();
 
         typeMapper.setTrustedPackages(
-                "com.smartwallet.contracts.transaction"
+                "com.smartwallet.contracts.transaction",
+                 "com.smartwallet.contracts.recurring"
         );
 
         converter.setJavaTypeMapper(typeMapper);

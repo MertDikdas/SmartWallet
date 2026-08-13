@@ -11,7 +11,8 @@ import com.smartwallet.financeservice.exception.*;
 import com.smartwallet.financeservice.mapper.AccountTransferMapper;
 import com.smartwallet.financeservice.repository.AccountRepository;
 import com.smartwallet.financeservice.repository.AccountTransferRepository;
-import com.smartwallet.financeservice.specification.AccountTransferSpecification;
+import com.smartwallet.financeservice.specification.*;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -26,7 +27,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -151,17 +151,12 @@ public class AccountTransferService {
             Long userId,
             TransferFilterRequest filter
     ){
+        @SuppressWarnings("SPRING_DATA_STRING_PROPERTY_REFERENCE")
         Pageable pageable = PageRequest.of(
                 filter.resolvedPage(),
                 filter.resolvedSize(),
                 Sort.by(
-                        Sort.Direction.DESC,
-                        "transferredAt"
-                ).and(
-                        Sort.by(
-                                Sort.Direction.DESC,
-                                "id"
-                        )
+                        Sort.Direction.DESC,"transferredAt", "id"
                 )
         );
 

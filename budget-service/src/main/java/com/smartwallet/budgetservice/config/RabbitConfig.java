@@ -1,11 +1,10 @@
 package com.smartwallet.budgetservice.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartwallet.contracts.budget.BudgetMessagingConstants;
 import com.smartwallet.contracts.transaction.TransactionMessagingConstants;
 import org.springframework.amqp.core.*;
-import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.DefaultJacksonJavaTypeMapper;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -88,13 +87,12 @@ public class RabbitConfig {
 
     @Bean
     public MessageConverter rabbitMessageConverter(
-            ObjectMapper objectMapper
     ) {
-        Jackson2JsonMessageConverter converter =
-                new Jackson2JsonMessageConverter(objectMapper);
+        JacksonJsonMessageConverter converter =
+                new JacksonJsonMessageConverter();
 
-        DefaultJackson2JavaTypeMapper typeMapper =
-                new DefaultJackson2JavaTypeMapper();
+        DefaultJacksonJavaTypeMapper typeMapper =
+                new DefaultJacksonJavaTypeMapper();
 
         typeMapper.setTrustedPackages(
                 "com.smartwallet.contracts.transaction",

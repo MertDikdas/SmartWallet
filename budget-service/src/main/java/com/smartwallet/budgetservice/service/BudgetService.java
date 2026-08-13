@@ -13,8 +13,8 @@ import com.smartwallet.budgetservice.exception.InvalidBudgetCategoryException;
 import com.smartwallet.budgetservice.mapper.BudgetMapper;
 import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
 import com.smartwallet.budgetservice.repository.BudgetRepository;
+import com.smartwallet.budgetservice.repository.MonthlyCategorySpendingRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.java.Log;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +31,8 @@ public class BudgetService {
     private final BudgetMapper budgetMapper;
     private final BudgetEventOutboxService budgetEventOutboxService;
     private final CategoryClient categoryClient;
+
+    private final MonthlyCategorySpendingRepository spendingRepository;
 
     @Transactional
     public BudgetResponse createBudget(
@@ -68,6 +70,7 @@ public class BudgetService {
             );
         }
 
+
         Budget budget = Budget.builder()
                 .userId(userId)
                 .categoryId(request.categoryId())
@@ -77,6 +80,16 @@ public class BudgetService {
                 .month(request.month())
                 .status(BudgetStatus.ACTIVE)
                 .build();
+
+        spendingRepository.findMonthlyCategorySpendingByUserIdAndCategoryIdAndYearAndMonth(
+                userId,
+                request.categoryId(),
+                request.year(),
+                request.month()
+        ).ifPresent(spending -> {
+            budget.setSpentAmount(spending.getSpentAmount());
+            budget.recalculateStatus();
+        });
 
         Budget savedBudget =
                 budgetRepository.save(budget);
@@ -91,6 +104,18 @@ public class BudgetService {
                 .stream()
                 .map(budgetMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public Boolean getBudgetByCategory(
+            Long userId,
+            Long categoryId
+    ){
+        return budgetRepository
+                .existsByUserIdAndCategoryId(
+                        userId,
+                        categoryId
+                );
     }
 
     @Transactional(readOnly = true)

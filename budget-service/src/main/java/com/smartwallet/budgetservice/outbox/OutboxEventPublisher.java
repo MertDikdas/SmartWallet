@@ -103,10 +103,10 @@ public class OutboxEventPublisher {
                 );
             }
 
-            if (!confirm.isAck()) {
+            if (!confirm.ack()) {
                 throw new IllegalStateException(
                         "RabbitMQ NACK: "
-                                + confirm.getReason()
+                                + confirm.reason()
                 );
             }
 

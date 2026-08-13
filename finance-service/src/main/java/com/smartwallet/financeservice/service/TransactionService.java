@@ -17,7 +17,7 @@ import com.smartwallet.financeservice.repository.CategoryRepository;
 import com.smartwallet.financeservice.repository.FinancialTransactionRepository;
 import com.smartwallet.financeservice.dto.request.TransactionFilterRequest;
 import com.smartwallet.financeservice.dto.response.PageResponse;
-import com.smartwallet.financeservice.specification.TransactionSpecification;
+import com.smartwallet.financeservice.specification.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -79,7 +79,6 @@ public class TransactionService {
 
         account.setBalance(newBalance);
 
-        // Bakiyeyi açıkça veritabanına kaydet
         accountRepository.save(account);
 
         FinancialTransaction transaction =
@@ -117,17 +116,14 @@ public class TransactionService {
             Long userId,
             TransactionFilterRequest filter
     ){
+        @SuppressWarnings("SPRING_DATA_STRING_PROPERTY_REFERENCE")
         Pageable pageable = PageRequest.of(
                 filter.resolvedPage(),
                 filter.resolvedSize(),
                 Sort.by(
-                        Sort.Direction.DESC,
-                        "transactionDate"
-                ).and(
-                        Sort.by(
-                                Sort.Direction.DESC,
-                                "id"
-                        )
+                        Sort.Order.desc("transactionDate"),
+                        Sort.Order.desc("id")
+        
                 )
         );
 
@@ -406,20 +402,6 @@ public class TransactionService {
 
             case EXPENSE ->
                     account.getBalance().add(amount);
-        };
-
-        account.setBalance(newBalance);
-    }
-    private void updateAccountBalance(
-            Account account,
-            TransactionType type,
-            BigDecimal amount
-    ) {
-        BigDecimal currentBalance = account.getBalance();
-
-        BigDecimal newBalance = switch (type) {
-            case INCOME -> currentBalance.add(amount);
-            case EXPENSE -> currentBalance.subtract(amount);
         };
 
         account.setBalance(newBalance);

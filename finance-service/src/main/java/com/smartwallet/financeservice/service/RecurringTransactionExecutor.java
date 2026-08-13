@@ -1,9 +1,10 @@
 package com.smartwallet.financeservice.service;
 
 import com.smartwallet.financeservice.dto.request.CreateTransactionRequest;
-import com.smartwallet.financeservice.entity.RecurrenceFrequency;
-import com.smartwallet.financeservice.entity.RecurringTransaction;
-import com.smartwallet.financeservice.entity.RecurringTransactionStatus;
+import com.smartwallet.financeservice.dto.response.TransactionResponse;
+import com.smartwallet.financeservice.entity.*;
+import com.smartwallet.financeservice.exception.RecurringTransactionExecutionException;
+import com.smartwallet.financeservice.repository.RecurringTransactionExecutionRepository;
 import com.smartwallet.financeservice.repository.RecurringTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 
@@ -23,6 +25,9 @@ public class RecurringTransactionExecutor {
             recurringTransactionRepository;
 
     private final TransactionService transactionService;
+
+    private final RecurringTransactionExecutionRepository recurringTransactionExecutionRepository;
+
 
     @Transactional(
             propagation = Propagation.REQUIRES_NEW
@@ -76,33 +81,174 @@ public class RecurringTransactionExecutor {
             return;
         }
 
-        CreateTransactionRequest request =
-                new CreateTransactionRequest(
-                        recurringTransaction
-                                .getAccount()
-                                .getId(),
+        try {
+            RecurringTransactionExecution execution =
+                    prepareExecution(
+                            recurringTransaction,
+                            scheduledDate,
+                            Instant.now()
+                    );
 
-                        recurringTransaction
-                                .getCategory()
-                                .getId(),
+            if(execution == null) {
+                return;
+            }
+            if (execution.getStatus()
+                    == RecurringExecutionStatus.SUCCESS) {
 
-                        recurringTransaction.getType(),
-
-                        recurringTransaction.getAmount(),
-
-                        recurringTransaction.getDescription(),
-
+                advanceRecurringTransaction(
+                        recurringTransaction,
                         scheduledDate
-                                .atStartOfDay()
-                                .toInstant(ZoneOffset.UTC)
                 );
 
+                recurringTransactionRepository.save(
+                        recurringTransaction
+                );
 
-        transactionService.createTransaction(
-                recurringTransaction.getUserId(),
-                request
+                return;
+            }
+
+            CreateTransactionRequest request =
+                    new CreateTransactionRequest(
+                            recurringTransaction
+                                    .getAccount()
+                                    .getId(),
+
+                            recurringTransaction
+                                    .getCategory()
+                                    .getId(),
+
+                            recurringTransaction.getType(),
+
+                            recurringTransaction.getAmount(),
+
+                            recurringTransaction
+                                    .getDescription(),
+
+                            scheduledDate
+                                    .atStartOfDay()
+                                    .toInstant(ZoneOffset.UTC)
+                    );
+
+            TransactionResponse transactionResponse =
+                    transactionService.createTransaction(
+                            recurringTransaction
+                                    .getUserId(),
+                            request
+                    );
+
+            execution.setStatus(
+                    RecurringExecutionStatus.SUCCESS
+            );
+
+            execution.setGeneratedTransactionId(
+                    transactionResponse.id()
+            );
+
+            execution.setErrorMessage(null);
+            execution.setNextRetryAt(null);
+
+            execution.setCompletedAt(
+                    Instant.now()
+            );
+
+            advanceRecurringTransaction(
+                    recurringTransaction,
+                    scheduledDate
+            );
+
+            recurringTransactionExecutionRepository.save(execution);
+
+            recurringTransactionRepository.save(
+                    recurringTransaction
+            );
+
+            log.info(
+                    "Recurring transaction executed: recurringId={}, scheduledDate={}, generatedTransactionId={}, nextExecutionDate={}",
+                    recurringTransactionId,
+                    scheduledDate,
+                    transactionResponse.id(),
+                    recurringTransaction.getNextExecutionDate()
+            );
+
+        } catch (RuntimeException exception) {
+
+            throw new RecurringTransactionExecutionException(
+                    recurringTransactionId,
+                    scheduledDate,
+                    exception
+            );
+        }
+    }
+
+    private RecurringTransactionExecution prepareExecution(
+            RecurringTransaction recurringTransaction,
+            LocalDate scheduledDate,
+            Instant now
+    ) {
+        RecurringTransactionExecution execution =
+                recurringTransactionExecutionRepository
+                        .findPeriodForUpdate(
+                                recurringTransaction.getId(),
+                                scheduledDate
+                        )
+                        .orElseGet(
+                                () -> RecurringTransactionExecution
+                                        .builder()
+                                        .recurringTransaction(
+                                                recurringTransaction
+                                        )
+                                        .scheduledDate(
+                                                scheduledDate
+                                        )
+                                        .createdAt(
+                                                Instant.now()
+                                        )
+                                        .build()
+                        );
+
+
+        if (execution.getStatus()
+                == RecurringExecutionStatus.SUCCESS) {
+            return execution;
+        }
+
+        if(execution.getStatus()
+                == RecurringExecutionStatus.FAILED
+                && execution.getNextRetryAt() != null
+                && execution.getNextRetryAt().isAfter(now)
+        ){
+            log.debug(
+                    "Recurring transaction retry time has not arrived: recurringId={}, scheduledDate={}, nextRetryAt={}",
+                    recurringTransaction.getId(),
+                    scheduledDate,
+                    execution.getNextRetryAt()
+            );
+
+            return null;
+
+        }
+
+        execution.setStatus(
+                RecurringExecutionStatus.PROCESSING
         );
 
+        execution.setGeneratedTransactionId(null);
+
+        execution.setErrorMessage(null);
+
+        execution.setCompletedAt(null);
+
+        execution.setNextRetryAt(null);
+
+        return recurringTransactionExecutionRepository.saveAndFlush(
+                execution
+        );
+    }
+
+    private void advanceRecurringTransaction(
+            RecurringTransaction recurringTransaction,
+            LocalDate scheduledDate
+    ) {
         recurringTransaction.setLastExecutionDate(
                 scheduledDate
         );
@@ -110,7 +256,8 @@ public class RecurringTransactionExecutor {
         LocalDate nextExecutionDate =
                 calculateNextExecutionDate(
                         scheduledDate,
-                        recurringTransaction.getFrequency()
+                        recurringTransaction
+                                .getFrequency()
                 );
 
         recurringTransaction.setNextExecutionDate(
@@ -125,17 +272,6 @@ public class RecurringTransactionExecutor {
                     RecurringTransactionStatus.CANCELLED
             );
         }
-
-        recurringTransactionRepository.save(
-                recurringTransaction
-        );
-
-        log.info(
-                "Recurring transaction executed: recurringId={}, scheduledDate={}, nextExecutionDate={}",
-                recurringTransactionId,
-                scheduledDate,
-                nextExecutionDate
-        );
     }
 
     private LocalDate calculateNextExecutionDate(

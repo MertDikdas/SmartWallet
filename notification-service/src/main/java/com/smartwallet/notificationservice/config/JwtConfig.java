@@ -1,6 +1,5 @@
 package com.smartwallet.notificationservice.config;
 
-import com.smartwallet.notificationservice.config.JwtProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

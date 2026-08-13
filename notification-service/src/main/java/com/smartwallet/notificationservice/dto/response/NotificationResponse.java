@@ -1,5 +1,6 @@
 package com.smartwallet.notificationservice.dto.response;
 
+import com.smartwallet.notificationservice.entity.NotificationResourceType;
 import com.smartwallet.notificationservice.entity.NotificationType;
 
 import java.time.Instant;
@@ -9,8 +10,8 @@ public record NotificationResponse(
         NotificationType type,
         String title,
         String message,
-        Long budgetId,
-        Long categoryId,
+        NotificationResourceType resourceType,
+        Long resourceId,
         boolean read,
         Instant createdAt,
         Instant readAt

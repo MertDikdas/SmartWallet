@@ -80,3 +80,12 @@ spring-shell.log
 **/src/main/resources/keys/private.pem
 **/src/main/resources/keys/public.pem
 /secrets/
+
+# Python environment
+/venv/
+.venv
+/venv
+venv/
+
+# Graphify çıktıları ve yerel AI dosyaları
+graphify-out/

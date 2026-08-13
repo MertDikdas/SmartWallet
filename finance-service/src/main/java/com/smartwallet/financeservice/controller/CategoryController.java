@@ -60,4 +60,24 @@ public class CategoryController {
                 )
         );
     }
+
+    @DeleteMapping("/{categoryId}")
+    public ResponseEntity<Void> deleteCategory(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long categoryId
+    ){
+        Long userId =
+                Long.valueOf(
+                        jwt.getSubject()
+                );
+        categoryService
+                .deleteCategory(
+                        userId,
+                        categoryId,
+                        jwt.getTokenValue()
+                );
+        return ResponseEntity
+                .noContent()
+                .build();
+    }
 }

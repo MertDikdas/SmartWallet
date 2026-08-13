@@ -1,5 +1,7 @@
 package com.smartwallet.financeservice.repository;
 
+import com.smartwallet.financeservice.entity.Account;
+import com.smartwallet.financeservice.entity.Category;
 import com.smartwallet.financeservice.entity.FinancialTransaction;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,6 +23,10 @@ public interface FinancialTransactionRepository
             Long transactionId,
             Long userId
     );
+
+    boolean existsByUserIdAndCategory(Long userId, Category category);
+
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT transaction

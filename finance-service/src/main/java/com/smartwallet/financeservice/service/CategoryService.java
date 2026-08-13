@@ -1,12 +1,16 @@
 package com.smartwallet.financeservice.service;
 
+import com.smartwallet.financeservice.client.BudgetClient;
 import com.smartwallet.financeservice.dto.request.CreateCategoryRequest;
 import com.smartwallet.financeservice.dto.response.CategoryResponse;
 import com.smartwallet.financeservice.entity.Category;
+import com.smartwallet.financeservice.exception.BudgetFoundForCategoryException;
 import com.smartwallet.financeservice.exception.CategoryAlreadyExistsException;
+import com.smartwallet.financeservice.exception.CategoryCannotDeleteBecauseTransactions;
 import com.smartwallet.financeservice.exception.CategoryNotFoundException;
 import com.smartwallet.financeservice.mapper.CategoryMapper;
 import com.smartwallet.financeservice.repository.CategoryRepository;
+import com.smartwallet.financeservice.repository.FinancialTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +23,8 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final FinancialTransactionRepository financialTransactionRepository;
+    private final BudgetClient budgetClient;
 
     @Transactional
     public CategoryResponse createCategory(
@@ -74,5 +80,38 @@ public class CategoryService {
                 );
 
         return categoryMapper.toResponse(category);
+    }
+
+    @Transactional
+    public void deleteCategory(Long userId, Long categoryId, String accessToken){
+        Category category = categoryRepository
+                .findByIdAndUserId(categoryId, userId)
+                .orElseThrow(
+                        () -> new CategoryNotFoundException(categoryId)
+                );
+
+        boolean transactionExists =
+                financialTransactionRepository
+                        .existsByUserIdAndCategory(
+                                userId,
+                                category
+                        );
+
+        if(transactionExists){
+            throw new CategoryCannotDeleteBecauseTransactions();
+        }
+
+        Boolean isBudgetExists =
+                budgetClient
+                        .getCategoryBudget(
+                                categoryId,
+                                accessToken
+                        );
+
+        if(isBudgetExists){
+            throw new BudgetFoundForCategoryException();
+        }
+
+        categoryRepository.delete(category);
     }
 }

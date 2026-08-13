@@ -1,7 +1,6 @@
 package com.smartwallet.analyticsservice.controller;
 
 import com.smartwallet.analyticsservice.dto.response.*;
-import com.smartwallet.analyticsservice.dto.response.MonthlyAnalyticsResponse;
 import com.smartwallet.analyticsservice.service.AnalyticsService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -42,6 +41,30 @@ public class AnalyticsController {
                         month
                 )
         );
+    }
+
+    @GetMapping("/daily-expense")
+    public ResponseEntity<DailyCashFlowResponse> getDailyExpense(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam
+            @Min(value = 2000)
+            int year,
+            @RequestParam
+            @Min(value = 1)
+            @Max(value = 12)
+            int month
+    ) {
+        Long userId =
+                Long.parseLong(jwt.getSubject());
+
+        DailyCashFlowResponse response =
+                analyticsService.getDailyExpense(
+                        userId,
+                        year,
+                        month
+                );
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/monthly/categories")

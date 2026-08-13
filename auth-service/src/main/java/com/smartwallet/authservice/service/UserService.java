@@ -6,12 +6,9 @@ import com.smartwallet.authservice.exception.UserNotFoundException;
 import com.smartwallet.authservice.mapper.UserMapper;
 import com.smartwallet.authservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.BadRequestException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

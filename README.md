@@ -65,7 +65,7 @@ This design avoids distributed database transactions while preventing the classi
 ## Technology stack
 
 - Java 21
-- Spring Boot 3.5
+- Spring Boot 4.1
 - Spring Security and OAuth2 Resource Server
 - Spring Cloud Gateway
 - Spring Data JPA and Hibernate
