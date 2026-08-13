@@ -4,6 +4,7 @@ import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.entity.TransactionProjection;
 import com.smartwallet.analyticsservice.repository.ProcessedTransactionEventRepository;
 import com.smartwallet.analyticsservice.repository.TransactionProjectionRepository;
+import com.smartwallet.contracts.transaction.CurrencyCode;
 import com.smartwallet.contracts.transaction.TransactionChangedEvent;
 import com.smartwallet.contracts.transaction.TransactionEventType;
 import com.smartwallet.contracts.transaction.TransactionSnapshot;
@@ -51,6 +52,7 @@ class TransactionEventHandlerTest {
                         3L,
                         "Food",
                         "EXPENSE",
+                        CurrencyCode.TRY,
                         "250.00"
                 );
 
@@ -125,6 +127,7 @@ class TransactionEventHandlerTest {
                         3L,
                         "Food",
                         "EXPENSE",
+                        CurrencyCode.TRY,
                         "250.00"
                 );
 
@@ -136,6 +139,7 @@ class TransactionEventHandlerTest {
                         4L,
                         "Travel",
                         "EXPENSE",
+                        CurrencyCode.TRY,
                         "500.00"
                 );
 
@@ -194,6 +198,7 @@ class TransactionEventHandlerTest {
                         3L,
                         "Food",
                         "EXPENSE",
+                        CurrencyCode.TRY,
                         "250.00"
                 );
 
@@ -240,6 +245,7 @@ class TransactionEventHandlerTest {
                         3L,
                         "Food",
                         "EXPENSE",
+                        CurrencyCode.TRY,
                         "250.00"
                 );
 
@@ -274,6 +280,7 @@ class TransactionEventHandlerTest {
             Long categoryId,
             String categoryName,
             String transactionType,
+            CurrencyCode currency,
             String amount
     ) {
         return new TransactionSnapshot(
@@ -284,6 +291,7 @@ class TransactionEventHandlerTest {
                 categoryName,
                 transactionType,
                 new BigDecimal(amount),
+                currency,
                 Instant.parse("2026-07-24T10:00:00Z")
         );
     }

@@ -2,6 +2,7 @@ package com.smartwallet.financeservice.service;
 
 import com.smartwallet.contracts.transaction.TransactionChangedEvent;
 import com.smartwallet.contracts.transaction.TransactionSnapshot;
+import com.smartwallet.contracts.transaction.CurrencyCode;
 import com.smartwallet.financeservice.dto.request.CreateTransactionRequest;
 import com.smartwallet.financeservice.dto.request.UpdateTransactionRequest;
 import com.smartwallet.financeservice.dto.response.TransactionResponse;
@@ -418,6 +419,7 @@ public class TransactionService {
                 transaction.getCategory().getName(),
                 transaction.getType().name(),
                 transaction.getAmount(),
+                CurrencyCode.valueOf(transaction.getAccount().getCurrency().name()),
                 transaction.getTransactionDate()
         );
     }

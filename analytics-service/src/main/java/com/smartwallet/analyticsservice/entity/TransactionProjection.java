@@ -47,6 +47,12 @@ public class TransactionProjection {
     )
     private BigDecimal amount;
 
+
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 3)
+    private CurrencyCode currency;
+
     @Column(name = "transaction_date", nullable = false)
     private Instant transactionDate;
 
@@ -68,6 +74,11 @@ public class TransactionProjection {
                         )
                 )
                 .amount(snapshot.amount())
+                .currency(
+                        CurrencyCode.valueOf(
+                                snapshot.currency().name()
+                        )
+                )
                 .transactionDate(snapshot.transactionDate())
                 .updatedAt(Instant.now())
                 .build();

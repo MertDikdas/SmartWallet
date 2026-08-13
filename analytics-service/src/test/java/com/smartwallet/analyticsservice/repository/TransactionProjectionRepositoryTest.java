@@ -2,6 +2,7 @@ package com.smartwallet.analyticsservice.repository;
 
 import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
+import com.smartwallet.analyticsservice.entity.CurrencyCode;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.entity.TransactionProjection;
 import org.junit.jupiter.api.Test;
@@ -75,6 +76,7 @@ class TransactionProjectionRepositoryTest {
                                 "Salary",
                                 ProjectionTransactionType.INCOME,
                                 "5000.00",
+                                CurrencyCode.TRY,
                                 "2026-07-05T10:00:00Z"
                         ),
                         createProjection(
@@ -85,6 +87,7 @@ class TransactionProjectionRepositoryTest {
                                 "Food",
                                 ProjectionTransactionType.EXPENSE,
                                 "1200.00",
+                                CurrencyCode.TRY,
                                 "2026-07-10T10:00:00Z"
                         ),
 
@@ -97,6 +100,7 @@ class TransactionProjectionRepositoryTest {
                                 "Food",
                                 ProjectionTransactionType.EXPENSE,
                                 "300.00",
+                                CurrencyCode.TRY,
                                 "2026-08-02T10:00:00Z"
                         ),
 
@@ -109,6 +113,7 @@ class TransactionProjectionRepositoryTest {
                                 "Food",
                                 ProjectionTransactionType.EXPENSE,
                                 "999.00",
+                                CurrencyCode.TRY,
                                 "2026-07-15T10:00:00Z"
                         )
                 )
@@ -150,6 +155,7 @@ class TransactionProjectionRepositoryTest {
                                 "Food",
                                 ProjectionTransactionType.EXPENSE,
                                 "750.00",
+                                CurrencyCode.TRY,
                                 "2026-07-05T10:00:00Z"
                         ),
                         createProjection(
@@ -160,6 +166,7 @@ class TransactionProjectionRepositoryTest {
                                 "Food",
                                 ProjectionTransactionType.EXPENSE,
                                 "250.00",
+                                CurrencyCode.TRY,
                                 "2026-07-06T10:00:00Z"
                         ),
                         createProjection(
@@ -170,6 +177,7 @@ class TransactionProjectionRepositoryTest {
                                 "Travel",
                                 ProjectionTransactionType.EXPENSE,
                                 "500.00",
+                                CurrencyCode.TRY,
                                 "2026-07-07T10:00:00Z"
                         ),
 
@@ -182,6 +190,7 @@ class TransactionProjectionRepositoryTest {
                                 "Salary",
                                 ProjectionTransactionType.INCOME,
                                 "5000.00",
+                                CurrencyCode.TRY,
                                 "2026-07-08T10:00:00Z"
                         ),
 
@@ -194,6 +203,7 @@ class TransactionProjectionRepositoryTest {
                                 "Food",
                                 ProjectionTransactionType.EXPENSE,
                                 "900.00",
+                                CurrencyCode.TRY,
                                 "2026-07-09T10:00:00Z"
                         )
                 )
@@ -254,6 +264,7 @@ class TransactionProjectionRepositoryTest {
             String categoryName,
             ProjectionTransactionType transactionType,
             String amount,
+            CurrencyCode currency,
             String transactionDate
     ) {
         return TransactionProjection.builder()
@@ -264,6 +275,7 @@ class TransactionProjectionRepositoryTest {
                 .categoryName(categoryName)
                 .transactionType(transactionType)
                 .amount(new BigDecimal(amount))
+                .currency(currency)
                 .transactionDate(
                         Instant.parse(transactionDate)
                 )
