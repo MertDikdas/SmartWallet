@@ -1,4 +1,5 @@
 import { apiRequest } from './apiClient'
+import type { Currency } from './accountApi'
 
 export type BudgetStatus = 'ACTIVE' | 'EXCEEDED'
 
@@ -11,6 +12,7 @@ export type Budget = {
     year: number
     month: number
     status: BudgetStatus
+    currency: Currency
     createdAt: string
     updatedAt: string
 }
@@ -20,6 +22,7 @@ export type CreateBudgetRequest = {
     limitAmount: number
     year: number
     month: number
+    currency: Currency
 }
 
 export type UpdateBudgetRequest = {

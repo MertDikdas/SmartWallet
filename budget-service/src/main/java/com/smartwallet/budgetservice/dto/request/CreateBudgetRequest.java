@@ -1,5 +1,6 @@
 package com.smartwallet.budgetservice.dto.request;
 
+import com.smartwallet.budgetservice.entity.CurrencyCode;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -24,7 +25,9 @@ public record CreateBudgetRequest(
         @NotNull(message = "Month is required")
         @Min(value = 1, message = "Month must be between 1 and 12")
         @Max(value = 12, message = "Month must be between 1 and 12")
-        Integer month
+        Integer month,
+        @NotNull
+        CurrencyCode currency
 
 ) {
 }

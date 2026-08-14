@@ -1,6 +1,7 @@
 package com.smartwallet.budgetservice.messaging;
 
 import com.smartwallet.budgetservice.entity.Budget;
+import com.smartwallet.budgetservice.entity.CurrencyCode;
 import com.smartwallet.budgetservice.entity.MonthlyCategorySpending;
 import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
 import com.smartwallet.budgetservice.entity.BudgetStatus;
@@ -94,7 +95,8 @@ public class BudgetTransactionEventHandler {
                         snapshot.userId(),
                         snapshot.categoryId(),
                         period.getYear(),
-                        period.getMonthValue()
+                        period.getMonthValue(),
+                        CurrencyCode.valueOf(snapshot.currency().name())
                 )
                 .orElse(null);
 
@@ -106,11 +108,12 @@ public class BudgetTransactionEventHandler {
             );
         }
         MonthlyCategorySpending spending = monthlyCategorySpendingRepository
-                .findByUserIdAndCategoryIdAndYearAndMonth(
+                .findByUserIdAndCategoryIdAndYearAndMonthAndCurrency(
                         snapshot.userId(),
                         snapshot.categoryId(),
                         period.getYear(),
-                        period.getMonthValue()
+                        period.getMonthValue(),
+                        CurrencyCode.valueOf(snapshot.currency().name())
                 )
                 .orElse(null);
 
@@ -127,6 +130,7 @@ public class BudgetTransactionEventHandler {
                     .spentAmount(snapshot.amount())
                     .year(period.getYear())
                     .month(period.getMonthValue())
+                    .currency(CurrencyCode.valueOf(snapshot.currency().name()))
                     .build();
             monthlyCategorySpendingRepository.save(newSpending);
         }

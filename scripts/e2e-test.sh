@@ -634,22 +634,39 @@ request POST "/api/budgets" 400 "{
   \"categoryId\": ${CATEGORY_ID},
   \"limitAmount\": 100.00,
   \"year\": ${YEAR},
-  \"month\": ${MONTH}
+  \"month\": ${MONTH},
+  \"currency\": \"TRY\"
 }" "$SECONDARY_TOKEN"
 echo "Foreign category correctly rejected"
 
-log "Creating budget with the category owner"
-request POST "/api/budgets" 201 "{
+log "Verifying that budget currency is required"
+request POST "/api/budgets" 400 "{
   \"categoryId\": ${CATEGORY_ID},
   \"limitAmount\": 100.00,
   \"year\": ${YEAR},
   \"month\": ${MONTH}
 }" "$PRIMARY_TOKEN"
+echo "Missing budget currency correctly rejected"
+
+log "Creating TRY budget with the category owner"
+request POST "/api/budgets" 201 "{
+  \"categoryId\": ${CATEGORY_ID},
+  \"limitAmount\": 100.00,
+  \"year\": ${YEAR},
+  \"month\": ${MONTH},
+  \"currency\": \"TRY\"
+}" "$PRIMARY_TOKEN"
 BUDGET_ID="$(json_get "$HTTP_BODY" "id")"
 INITIAL_BUDGET_STATUS="$(json_get "$HTTP_BODY" "status")"
+INITIAL_BUDGET_CURRENCY="$(json_get "$HTTP_BODY" "currency")"
+
 [[ "$INITIAL_BUDGET_STATUS" == "ACTIVE" ]] \
   || fail "New budget should be ACTIVE, actual: ${INITIAL_BUDGET_STATUS}"
-echo "Budget id: ${BUDGET_ID}"
+
+[[ "$INITIAL_BUDGET_CURRENCY" == "TRY" ]] \
+  || fail "New TRY budget returned wrong currency: ${HTTP_BODY}"
+
+echo "TRY budget id: ${BUDGET_ID}"
 
 log "Creating an expense that exceeds the budget"
 request POST "/api/transactions" 201 "{
@@ -972,18 +989,33 @@ request POST "/api/accounts" 201 "{
 USD_ACCOUNT_ID="$(json_get "$HTTP_BODY" "id")"
 [[ -n "$USD_ACCOUNT_ID" ]] || fail "USD account id is empty"
 
-log "Creating USD expense category"
-request POST "/api/categories" 201 "{
-  \"name\": \"E2E USD Expense ${RUN_SUFFIX}\",
-  \"type\": \"EXPENSE\"
+log "Creating USD budget for the same category and period"
+request POST "/api/budgets" 201 "{
+  \"categoryId\": ${CATEGORY_ID},
+  \"limitAmount\": 30.00,
+  \"year\": ${YEAR},
+  \"month\": ${MONTH},
+  \"currency\": \"USD\"
 }" "$PRIMARY_TOKEN"
-USD_CATEGORY_ID="$(json_get "$HTTP_BODY" "id")"
-[[ -n "$USD_CATEGORY_ID" ]] || fail "USD category id is empty"
 
-log "Creating USD expense"
+USD_BUDGET_ID="$(json_get "$HTTP_BODY" "id")"
+USD_BUDGET_STATUS="$(json_get "$HTTP_BODY" "status")"
+USD_BUDGET_CURRENCY="$(json_get "$HTTP_BODY" "currency")"
+
+[[ -n "$USD_BUDGET_ID" ]] || fail "USD budget id is empty"
+
+[[ "$USD_BUDGET_STATUS" == "ACTIVE" ]] \
+  || fail "New USD budget should be ACTIVE: ${HTTP_BODY}"
+
+[[ "$USD_BUDGET_CURRENCY" == "USD" ]] \
+  || fail "New USD budget returned wrong currency: ${HTTP_BODY}"
+
+echo "USD budget id: ${USD_BUDGET_ID}"
+
+log "Creating USD expense in the same category"
 request POST "/api/transactions" 201 "{
   \"accountId\": ${USD_ACCOUNT_ID},
-  \"categoryId\": ${USD_CATEGORY_ID},
+  \"categoryId\": ${CATEGORY_ID},
   \"type\": \"EXPENSE\",
   \"amount\": 40.00,
   \"description\": \"SmartWallet CI USD expense\",
@@ -991,6 +1023,44 @@ request POST "/api/transactions" 201 "{
 }" "$PRIMARY_TOKEN"
 USD_TRANSACTION_ID="$(json_get "$HTTP_BODY" "id")"
 [[ -n "$USD_TRANSACTION_ID" ]] || fail "USD transaction id is empty"
+
+log "Waiting for USD Budget Service projection"
+USD_BUDGET_READY=false
+for ((attempt = 1; attempt <= POLL_ATTEMPTS; attempt++)); do
+  request GET "/api/budgets/${USD_BUDGET_ID}" 200 "" "$PRIMARY_TOKEN"
+
+  usd_budget_status="$(json_get "$HTTP_BODY" "status")"
+  usd_spent_amount="$(json_get "$HTTP_BODY" "spentAmount")"
+  usd_budget_currency="$(json_get "$HTTP_BODY" "currency")"
+
+  echo "USD budget poll ${attempt}/${POLL_ATTEMPTS}: currency=${usd_budget_currency}, status=${usd_budget_status}, spent=${usd_spent_amount}"
+
+  if [[ "$usd_budget_currency" == "USD" ]] \
+      && [[ "$usd_budget_status" == "EXCEEDED" ]] \
+      && json_decimal_equals "$HTTP_BODY" "spentAmount" "40.00"; then
+    USD_BUDGET_READY=true
+    break
+  fi
+
+  sleep "$POLL_DELAY_SECONDS"
+done
+
+[[ "$USD_BUDGET_READY" == "true" ]] \
+  || fail "USD budget did not become EXCEEDED in time"
+
+log "Verifying USD expense did not affect TRY budget"
+request GET "/api/budgets/${BUDGET_ID}" 200 "" "$PRIMARY_TOKEN"
+
+[[ "$(json_get "$HTTP_BODY" "currency")" == "TRY" ]] \
+  || fail "TRY budget returned wrong currency after USD expense: ${HTTP_BODY}"
+
+[[ "$(json_get "$HTTP_BODY" "status")" == "EXCEEDED" ]] \
+  || fail "TRY budget status changed unexpectedly after USD expense: ${HTTP_BODY}"
+
+json_decimal_equals "$HTTP_BODY" "spentAmount" "150.00" \
+  || fail "USD expense leaked into TRY budget: ${HTTP_BODY}"
+
+echo "TRY and USD budgets are isolated"
 
 log "Waiting for TRY analytics projection"
 TRY_ANALYTICS_READY=false
@@ -1078,7 +1148,7 @@ request GET \
 monthly_category_analytics_matches \
   "$HTTP_BODY" \
   "USD" \
-  "$USD_CATEGORY_ID" \
+  "$CATEGORY_ID" \
   "40.00" \
   || fail "USD category analytics is incorrect: ${HTTP_BODY}"
 
@@ -1818,5 +1888,5 @@ echo "Category id     : ${CATEGORY_ID}"
 echo "Budget id       : ${BUDGET_ID}"
 echo "Transaction id  : ${TRANSACTION_ID}"
 echo "USD account id  : ${USD_ACCOUNT_ID:-not-created}"
-echo "USD category id : ${USD_CATEGORY_ID:-not-created}"
+echo "USD budget id   : ${USD_BUDGET_ID:-not-created}"
 echo "USD transaction : ${USD_TRANSACTION_ID:-not-created}"

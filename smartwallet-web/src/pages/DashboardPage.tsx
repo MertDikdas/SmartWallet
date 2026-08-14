@@ -635,7 +635,7 @@ function DashboardPage() {
                     {view === 'recurring' && (
                         <RecurringView
                             recurring={recurring}
-                            primaryCurrency={primaryCurrency}
+                            accounts={accounts}
                             onAdd={() => setModal('recurring')}
                             onStatusChange={async (item) => {
                                 const updated =
@@ -1407,8 +1407,8 @@ function OverviewView({
                                         <div>
                                             <strong>{categoryName(budget.categoryId)}</strong>
                                             <span>
-                                                {formatCompactMoney(budget.spentAmount, primaryCurrency)} /{' '}
-                                                {formatCompactMoney(budget.limitAmount, primaryCurrency)}
+                                                {formatCompactMoney(budget.spentAmount, budget.currency)} /{' '}
+                                                {formatCompactMoney(budget.limitAmount, budget.currency)}
                                             </span>
                                         </div>
                                         <div className={`progress-track ${budget.status === 'EXCEEDED' ? 'danger' : ''}`}>
@@ -1898,8 +1898,8 @@ function BudgetsView({
                                 <h2>{categoryName(budget.categoryId)}</h2>
                                 <p>{monthName(budget.month)} {budget.year}</p>
                                 <div className="budget-values">
-                                    <strong>{formatMoney(budget.spentAmount, primaryCurrency)}</strong>
-                                    <span>of {formatMoney(budget.limitAmount, primaryCurrency)}</span>
+                                    <strong>{formatMoney(budget.spentAmount, budget.currency)}</strong>
+                                    <span>of {formatMoney(budget.limitAmount, budget.currency)}</span>
                                 </div>
                                 <div className={`progress-track large ${budget.status === 'EXCEEDED' ? 'danger' : ''}`}>
                                     <span style={{ width: `${progress}%` }} />
@@ -1907,7 +1907,7 @@ function BudgetsView({
                                 <footer>
                                     <span>{progress.toFixed(0)}% used</span>
                                     <strong className={Number(budget.remainingAmount) < 0 ? 'money-negative' : ''}>
-                                        {formatMoney(budget.remainingAmount, primaryCurrency)} left
+                                        {formatMoney(budget.remainingAmount, budget.currency)} left
                                     </strong>
                                 </footer>
                                 <button
@@ -1975,13 +1975,13 @@ function TransfersView({ transfers, onAdd }: { transfers: Transfer[]; onAdd: () 
 }
 
 function RecurringView({
-    recurring,
-    primaryCurrency,
-    onAdd,
-    onStatusChange,
-}: {
+                           recurring,
+                           accounts,
+                           onAdd,
+                           onStatusChange,
+                       }: {
     recurring: RecurringTransaction[]
-    primaryCurrency: string
+    accounts: Account[]
     onAdd: () => void
     onStatusChange: (item: RecurringTransaction) => Promise<void>
 }) {
@@ -1999,8 +1999,15 @@ function RecurringView({
             />
             {recurring.length ? (
                 <section className="recurring-grid">
-                    {recurring.map((item) => (
-                        <article className="recurring-card" key={item.id}>
+                    {recurring.map((item) => {
+                        const account = accounts.find(
+                            (account) => account.id === item.accountId,
+                        )
+
+                        const currency = account?.currency ?? 'TRY'
+
+                        return (
+                            <article className="recurring-card" key={item.id}>
                             <header>
                                 <span className={`transaction-icon ${item.type === 'INCOME' ? 'income' : 'expense'}`}>
                                     <Icon name="repeat" size={18} />
@@ -2010,7 +2017,7 @@ function RecurringView({
                             <h2>{item.description || item.categoryName}</h2>
                             <p>{item.accountName} · {item.frequency.toLowerCase()}</p>
                             <strong className={item.type === 'INCOME' ? 'money-positive' : 'money-negative'}>
-                                {item.type === 'INCOME' ? '+' : '-'}{formatMoney(item.amount, primaryCurrency)}
+                                {item.type === 'INCOME' ? '+' : '-'}{formatMoney(item.amount, currency)}
                             </strong>
                             <div className="recurring-details">
                                 <span>Next run</span>
@@ -2038,7 +2045,8 @@ function RecurringView({
                                 </button>
                             )}
                         </article>
-                    ))}
+                    )
+                    })}
                 </section>
             ) : (
                 <EmptyStateCard
@@ -2489,15 +2497,22 @@ function BudgetForm({
 }: {
     categories: Category[]
     today: Date
-    onSubmit: (request: { categoryId: number; limitAmount: number; year: number; month: number }) => Promise<void>
+    onSubmit: (request: { categoryId: number; limitAmount: number; year: number; month: number; currency: Currency }) => Promise<void>
 }) {
     const expenseCategories = categories.filter((category) => category.type === 'EXPENSE')
     const [categoryId, setCategoryId] = useState('')
     const [limitAmount, setLimitAmount] = useState('')
     const [month, setMonth] = useState(today.getMonth() + 1)
     const [year, setYear] = useState(today.getFullYear())
+    const [currency, setCurrency] = useState<Currency>('TRY')
     return (
-        <SmartForm onSubmit={() => onSubmit({ categoryId: Number(categoryId), limitAmount: Number(limitAmount), year, month })}>
+        <SmartForm onSubmit={() => onSubmit({
+            categoryId: Number(categoryId),
+            limitAmount: Number(limitAmount),
+            year,
+            month,
+            currency,
+        }) }>
             <FormField label="Expense category">
                 <select value={categoryId} required onChange={(event) => setCategoryId(event.target.value)}>
                     <option value="">Select category</option>
@@ -2517,6 +2532,18 @@ function BudgetForm({
                     <input type="number" min="2000" value={year} required onChange={(event) => setYear(Number(event.target.value))} />
                 </FormField>
             </div>
+            <FormField label="Currency">
+                <select
+                    value={currency}
+                    onChange={(event) =>
+                        setCurrency(event.target.value as Currency)
+                    }
+                >
+                    <option value="TRY">TRY</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                </select>
+            </FormField>
             <SubmitButton label="Create budget" disabled={!expenseCategories.length} />
         </SmartForm>
     )
