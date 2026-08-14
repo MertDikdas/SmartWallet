@@ -3,6 +3,7 @@ package com.smartwallet.analyticsservice.repository;
 import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
 import com.smartwallet.analyticsservice.dto.projection.DailyCashFlowAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
+import com.smartwallet.analyticsservice.entity.CurrencyCode;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.entity.TransactionProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,6 +38,7 @@ public interface TransactionProjectionRepository
             WHERE projection.userId = :userId
               AND projection.transactionDate >= :startDate
               AND projection.transactionDate < :endDate
+              AND projection.currency = :currency
             """)
     MonthlyAggregate calculateMonthlyAggregate(
             @Param("userId") Long userId,
@@ -45,7 +47,9 @@ public interface TransactionProjectionRepository
             @Param("incomeType")
             ProjectionTransactionType incomeType,
             @Param("expenseType")
-            ProjectionTransactionType expenseType
+            ProjectionTransactionType expenseType,
+            @Param("currency")
+            CurrencyCode currency
     );
 
     @Query("""
@@ -60,6 +64,7 @@ public interface TransactionProjectionRepository
           AND projection.transactionType = :expenseType
           AND projection.transactionDate >= :startDate
           AND projection.transactionDate < :endDate
+          AND projection.currency = :currency
         GROUP BY projection.categoryId,
                 projection.categoryName
         ORDER BY SUM(projection.amount) DESC
@@ -69,7 +74,8 @@ public interface TransactionProjectionRepository
             @Param("startDate") Instant startDate,
             @Param("endDate") Instant endDate,
             @Param("expenseType")
-            ProjectionTransactionType expenseType
+            ProjectionTransactionType expenseType,
+            @Param("currency") CurrencyCode currency
     );
 
     @Query("""
@@ -97,6 +103,7 @@ public interface TransactionProjectionRepository
       AND projection.transactionDate >= :startDate
       AND projection.transactionDate < :endDate
       AND projection.transactionType IN (:incomeType, :expenseType)
+      AND projection.currency = :currency
     GROUP BY day(projection.transactionDate)
     ORDER BY day(projection.transactionDate)
     """)
@@ -105,6 +112,7 @@ public interface TransactionProjectionRepository
             @Param("startDate") Instant startDate,
             @Param("endDate") Instant endDate,
             @Param("incomeType") ProjectionTransactionType incomeType,
-            @Param("expenseType") ProjectionTransactionType expenseType
+            @Param("expenseType") ProjectionTransactionType expenseType,
+            @Param("currency") CurrencyCode currency
     );
 }

@@ -35,6 +35,7 @@ import {
     getMonthlyAnalytics,
     getMonthlyCategoryAnalytics,
     getMonthlyTrend,
+    type Currency as AnalyticsCurrency,
     type DailyCashFlow,
     type MonthlyAnalytics,
     type MonthlyCategoryAnalytics,
@@ -142,6 +143,8 @@ function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState('')
     const [actionError, setActionError] = useState('')
+    const [analyticsCurrency, setAnalyticsCurrency] =
+        useState<AnalyticsCurrency>('TRY')
 
     const handleEditTransaction = (transaction: Transaction) => {
         setEditingTransaction(transaction)
@@ -177,13 +180,27 @@ function DashboardPage() {
 
             const optionalRequests = await Promise.allSettled([
                 getBudgets(),
-                getMonthlyAnalytics(today.getFullYear(), today.getMonth() + 1),
+                getMonthlyAnalytics(
+                    today.getFullYear(),
+                    today.getMonth() + 1,
+                    analyticsCurrency,
+                ),
+
                 getMonthlyCategoryAnalytics(
                     today.getFullYear(),
                     today.getMonth() + 1,
+                    analyticsCurrency,
                 ),
-                getMonthlyTrend(6),
-                getDailyCashFlow(today.getFullYear(), today.getMonth() + 1),
+
+                getMonthlyTrend(
+                    analyticsCurrency,
+                    6,
+                ),
+                getDailyCashFlow(
+                    today.getFullYear(),
+                    today.getMonth() + 1,
+                    analyticsCurrency,
+                ),
                 getTransfers(0, 30),
                 getRecurringTransactions(),
                 getNotifications(false, 0, 20),
@@ -238,7 +255,7 @@ function DashboardPage() {
         } finally {
             setIsLoading(false)
         }
-    }, [today])
+    }, [today, analyticsCurrency])
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -551,10 +568,15 @@ function DashboardPage() {
                             accounts={accounts}
                             balancesByCurrency={balancesByCurrency}
                             primaryCurrency={primaryCurrency}
+
+                            analyticsCurrency={analyticsCurrency}
+                            onAnalyticsCurrencyChange={setAnalyticsCurrency}
+
                             analytics={analytics}
                             categoryAnalytics={categoryAnalytics}
                             trend={trend}
                             dailyCashFlow={dailyCashFlow}
+
                             budgets={budgets}
                             transactions={filteredTransactions.slice(0, 6)}
                             categoryName={categoryName}
@@ -673,7 +695,15 @@ function DashboardPage() {
                             setAccounts(accountList)
                             setTransactions(transactionPage.content)
                             setModal(null)
-                            void refreshOverviewData(today, setBudgets, setAnalytics, setCategoryAnalytics, setTrend)
+                            void refreshOverviewData(
+                                today,
+                                analyticsCurrency,
+                                setBudgets,
+                                setAnalytics,
+                                setCategoryAnalytics,
+                                setTrend,
+                                setDailyCashFlow,
+                            )
                         }}
                     />
                 </Modal>
@@ -855,22 +885,59 @@ function DashboardPage() {
 
 async function refreshOverviewData(
     date: Date,
+    currency: AnalyticsCurrency,
     setBudgets: (value: Budget[]) => void,
     setAnalytics: (value: MonthlyAnalytics) => void,
     setCategoryAnalytics: (value: MonthlyCategoryAnalytics) => void,
     setTrend: (value: MonthlyTrend) => void,
+    setDailyCashFlow: (value: DailyCashFlow) => void,
 ) {
     const results = await Promise.allSettled([
         getBudgets(),
-        getMonthlyAnalytics(date.getFullYear(), date.getMonth() + 1),
-        getMonthlyCategoryAnalytics(date.getFullYear(), date.getMonth() + 1),
-        getMonthlyTrend(6),
+
+        getMonthlyAnalytics(
+            date.getFullYear(),
+            date.getMonth() + 1,
+            currency,
+        ),
+
+        getMonthlyCategoryAnalytics(
+            date.getFullYear(),
+            date.getMonth() + 1,
+            currency,
+        ),
+
+        getMonthlyTrend(
+            currency,
+            6,
+        ),
+
+        getDailyCashFlow(
+            date.getFullYear(),
+            date.getMonth() + 1,
+            currency,
+        ),
     ])
 
-    if (results[0].status === 'fulfilled') setBudgets(results[0].value)
-    if (results[1].status === 'fulfilled') setAnalytics(results[1].value)
-    if (results[2].status === 'fulfilled') setCategoryAnalytics(results[2].value)
-    if (results[3].status === 'fulfilled') setTrend(results[3].value)
+    if (results[0].status === 'fulfilled') {
+        setBudgets(results[0].value)
+    }
+
+    if (results[1].status === 'fulfilled') {
+        setAnalytics(results[1].value)
+    }
+
+    if (results[2].status === 'fulfilled') {
+        setCategoryAnalytics(results[2].value)
+    }
+
+    if (results[3].status === 'fulfilled') {
+        setTrend(results[3].value)
+    }
+
+    if (results[4].status === 'fulfilled') {
+        setDailyCashFlow(results[4].value)
+    }
 }
 
 interface OverviewProps {
@@ -878,6 +945,10 @@ interface OverviewProps {
     accounts: Account[]
     balancesByCurrency: Record<string, number>
     primaryCurrency: string
+
+    analyticsCurrency: AnalyticsCurrency
+    onAnalyticsCurrencyChange: (currency: AnalyticsCurrency) => void
+
     analytics: MonthlyAnalytics | null
     categoryAnalytics: MonthlyCategoryAnalytics | null
     trend: MonthlyTrend | null
@@ -893,22 +964,24 @@ interface OverviewProps {
 }
 
 function OverviewView({
-    user,
-    accounts,
-    balancesByCurrency,
-    primaryCurrency,
-    analytics,
-    categoryAnalytics,
-    trend,
-    dailyCashFlow,
-    budgets,
-    transactions,
-    categoryName,
-    accountFor,
-    onAddTransaction,
-    onAddAccount,
-    onViewTransactions,
-    onViewBudgets,
+                          user,
+                          accounts,
+                          balancesByCurrency,
+                          primaryCurrency,
+                          analyticsCurrency,
+                          onAnalyticsCurrencyChange,
+                          analytics,
+                          categoryAnalytics,
+                          trend,
+                          dailyCashFlow,
+                          budgets,
+                          transactions,
+                          categoryName,
+                          accountFor,
+                          onAddTransaction,
+                          onAddAccount,
+                          onViewTransactions,
+                          onViewBudgets,
 }: OverviewProps) {
     const [selectedDay, setSelectedDay] = useState<number | null>(null)
     const savingsRate = analytics?.totalIncome
@@ -970,11 +1043,33 @@ function OverviewView({
                     <p>Here is what is happening with your money this month.</p>
                 </div>
                 <div className="heading-actions">
-                    <button className="button secondary" onClick={onAddAccount}>
+                    <select
+                        className="analytics-currency-select"
+                        value={analyticsCurrency}
+                        onChange={(event) =>
+                            onAnalyticsCurrencyChange(
+                                event.target.value as AnalyticsCurrency,
+                            )
+                        }
+                        aria-label="Analytics currency"
+                    >
+                        <option value="TRY">TRY</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </select>
+
+                    <button
+                        className="button secondary"
+                        onClick={onAddAccount}
+                    >
                         <Icon name="wallet" size={18} />
                         New account
                     </button>
-                    <button className="button primary" onClick={onAddTransaction}>
+
+                    <button
+                        className="button primary"
+                        onClick={onAddTransaction}
+                    >
                         <Icon name="plus" size={18} />
                         Add transaction
                     </button>
@@ -1009,7 +1104,7 @@ function OverviewView({
                     title="Income"
                     value={formatCompactMoney(
                         analytics?.totalIncome ?? 0,
-                        primaryCurrency,
+                        analytics?.currency ?? analyticsCurrency,
                     )}
                     detail="This month"
                     icon="arrow-down"
@@ -1019,9 +1114,9 @@ function OverviewView({
                     title="Expenses"
                     value={formatCompactMoney(
                         analytics?.totalExpense ?? 0,
-                        primaryCurrency,
+                        analytics?.currency ?? analyticsCurrency,
                     )}
-                    detail={`${analytics?.transactionCount ?? transactions.length} transactions`}
+                    detail={`${analytics?.transactionCount ?? 0} transactions`}
                     icon="arrow-up"
                     tone="red"
                 />
@@ -1058,7 +1153,10 @@ function OverviewView({
                                                         3,
                                                     )}%`,
                                                 }}
-                                                title={`Income: ${formatMoney(item.totalIncome, primaryCurrency)}`}
+                                                title={`Income: ${formatMoney(
+                                                    item.totalIncome,
+                                                    item.currency,
+                                                )}`}
                                             />
                                             <span
                                                 className="bar expense-bar"
@@ -1068,7 +1166,10 @@ function OverviewView({
                                                         3,
                                                     )}%`,
                                                 }}
-                                                title={`Expense: ${formatMoney(item.totalExpense, primaryCurrency)}`}
+                                                title={`Income: ${formatMoney(
+                                                    item.totalExpense,
+                                                    item.currency,
+                                                )}`}
                                             />
                                         </div>
                                         <span>{monthName(item.month)}</span>
@@ -1104,7 +1205,12 @@ function OverviewView({
                                             <span style={{ width: `${Math.min(Number(item.percentage), 100)}%` }} />
                                         </div>
                                     </div>
-                                    <strong>{formatCompactMoney(item.totalExpense, primaryCurrency)}</strong>
+                                    <strong>
+                                        {formatCompactMoney(
+                                            item.totalExpense,
+                                            categoryAnalytics.currency
+                                        )}
+                                    </strong>
                                 </div>
                             ))}
                         </div>
@@ -1131,7 +1237,7 @@ function OverviewView({
                                 <strong>
                                     {formatCompactMoney(
                                         dailyCashFlow.totalIncome,
-                                        primaryCurrency,
+                                        dailyCashFlow.currency,
                                     )}
                                 </strong>
                             </div>
@@ -1141,7 +1247,7 @@ function OverviewView({
                                 <strong>
                                     {formatCompactMoney(
                                         dailyCashFlow.totalExpense,
-                                        primaryCurrency,
+                                        dailyCashFlow.currency,
                                     )}
                                 </strong>
                             </div>
@@ -1174,7 +1280,7 @@ function OverviewView({
                                                 }}
                                                 title={`${item.day}. day Income: ${formatMoney(
                                                     income,
-                                                    primaryCurrency,
+                                                    dailyCashFlow.currency,
                                                 )}`}
                                                 onClick={() =>
                                                     setSelectedDay(
@@ -1198,9 +1304,9 @@ function OverviewView({
                                                                 4,
                                                             )}%`,
                                                 }}
-                                                title={`${item.day}. gün Expense: ${formatMoney(
+                                                title={`${item.day}. day Expense: ${formatMoney(
                                                     expense,
-                                                    primaryCurrency,
+                                                    dailyCashFlow.currency,
                                                 )}`}
                                                 onClick={() =>
                                                     setSelectedDay(
@@ -1240,15 +1346,14 @@ function OverviewView({
 
                                 <TransactionList
                                     transactions={transactions.filter((transaction) => {
-
-                                        const date = new Date(
-                                            transaction.transactionDate,
-                                        )
+                                        const date = new Date(transaction.transactionDate)
+                                        const account = accountFor(transaction.accountId)
 
                                         return (
                                             date.getFullYear() === dailyCashFlow.year &&
                                             date.getMonth() + 1 === dailyCashFlow.month &&
-                                            date.getDate() === selectedDay
+                                            date.getDate() === selectedDay &&
+                                            account?.currency === analyticsCurrency
                                         )
                                     })}
                                     accountFor={accountFor}

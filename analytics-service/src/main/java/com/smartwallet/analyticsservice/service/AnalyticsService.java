@@ -4,6 +4,7 @@ import com.smartwallet.analyticsservice.dto.projection.CategoryExpenseAggregate;
 import com.smartwallet.analyticsservice.dto.projection.DailyCashFlowAggregate;
 import com.smartwallet.analyticsservice.dto.projection.MonthlyAggregate;
 import com.smartwallet.analyticsservice.dto.response.*;
+import com.smartwallet.analyticsservice.entity.CurrencyCode;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.repository.TransactionProjectionRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,8 @@ public class AnalyticsService {
     public MonthlyAnalyticsResponse getMonthlyAnalytics(
             Long userId,
             int year,
-            int month
+            int month,
+            CurrencyCode currency
     ) {
         YearMonth period = YearMonth.of(year, month);
 
@@ -52,7 +54,8 @@ public class AnalyticsService {
                                 startDate,
                                 endDate,
                                 ProjectionTransactionType.INCOME,
-                                ProjectionTransactionType.EXPENSE
+                                ProjectionTransactionType.EXPENSE,
+                                currency
                         );
 
         BigDecimal totalIncome =
@@ -76,7 +79,8 @@ public class AnalyticsService {
                 totalIncome,
                 totalExpense,
                 totalIncome.subtract(totalExpense),
-                transactionCount
+                transactionCount,
+                currency
         );
     }
 
@@ -84,7 +88,8 @@ public class AnalyticsService {
     public DailyCashFlowResponse getDailyExpense(
             Long userId,
             int year,
-            int month
+            int month,
+            CurrencyCode currency
     ) {
         YearMonth period = YearMonth.of(year, month);
 
@@ -106,7 +111,8 @@ public class AnalyticsService {
                                 startDate,
                                 endDate,
                                 ProjectionTransactionType.INCOME,
-                                ProjectionTransactionType.EXPENSE
+                                ProjectionTransactionType.EXPENSE,
+                                currency
                         );
 
         BigDecimal totalExpense = aggregates.stream()
@@ -132,7 +138,8 @@ public class AnalyticsService {
                 month,
                 totalIncome,
                 totalExpense,
-                days
+                days,
+                currency
         );
     }
 
@@ -140,7 +147,8 @@ public class AnalyticsService {
     public MonthlyCategoryAnalyticsResponse getMonthlyCategoryAnalytics(
             Long userId,
             int year,
-            int month
+            int month,
+            CurrencyCode currency
     ){
         YearMonth period = YearMonth.of(year, month);
 
@@ -161,7 +169,8 @@ public class AnalyticsService {
                                 userId,
                                 startDate,
                                 endDate,
-                                ProjectionTransactionType.EXPENSE
+                                ProjectionTransactionType.EXPENSE,
+                                currency
                         );
         BigDecimal totalExpense = aggregates.stream()
                 .map(aggregate -> aggregate.totalExpense())
@@ -187,6 +196,7 @@ public class AnalyticsService {
                 year,
                 month,
                 totalExpense,
+                currency,
                 categories
         );
     }
@@ -194,7 +204,8 @@ public class AnalyticsService {
     @Transactional(readOnly = true)
     public MonthlyTrendResponse getMonthlyTrend(
             Long userId,
-            int months
+            int months,
+            CurrencyCode currency
     ) {
         YearMonth currentMonth =
                 YearMonth.now(ZoneOffset.UTC);
@@ -211,7 +222,8 @@ public class AnalyticsService {
                     getMonthlyAnalytics(
                             userId,
                             period.getYear(),
-                            period.getMonthValue()
+                            period.getMonthValue(),
+                            currency
                     );
 
             MonthlyTrendItemResponse trendItem =
@@ -227,7 +239,11 @@ public class AnalyticsService {
             trendItems.add(trendItem);
         }
 
-        return new MonthlyTrendResponse(trendItems);
+
+        return new MonthlyTrendResponse(
+                trendItems,
+                currency
+        );
     }
 
     @Transactional(readOnly = true)
@@ -236,20 +252,23 @@ public class AnalyticsService {
             int baseYear,
             int baseMonth,
             int comparisonYear,
-            int comparisonMonth
+            int comparisonMonth,
+            CurrencyCode currency
     ) {
         MonthlyAnalyticsResponse baseAnalytics =
                 getMonthlyAnalytics(
                         userId,
                         baseYear,
-                        baseMonth
+                        baseMonth,
+                        currency
                 );
 
         MonthlyAnalyticsResponse comparisonAnalytics =
                 getMonthlyAnalytics(
                         userId,
                         comparisonYear,
-                        comparisonMonth
+                        comparisonMonth,
+                        currency
                 );
 
         MonthlyComparisonItemResponse basePeriod =
@@ -286,14 +305,16 @@ public class AnalyticsService {
                 basePeriod,
                 comparisonPeriod,
                 incomeChangePercentage,
-                expenseChangePercentage
+                expenseChangePercentage,
+                currency
         );
     }
 
     @Transactional(readOnly = true)
     public YearlyAnalyticsResponse getYearlyAnalytics(
             Long userId,
-            int year
+            int year,
+            CurrencyCode currency
     ) {
         Year period = Year.of(year);
 
@@ -315,7 +336,8 @@ public class AnalyticsService {
                                 startDate,
                                 endDate,
                                 ProjectionTransactionType.INCOME,
-                                ProjectionTransactionType.EXPENSE
+                                ProjectionTransactionType.EXPENSE,
+                                currency
                         );
 
         BigDecimal totalIncome =
@@ -349,7 +371,8 @@ public class AnalyticsService {
                 totalExpense,
                 netAmount,
                 transactionCount,
-                averageMonthlyExpense
+                averageMonthlyExpense,
+                currency
         );
     }
 

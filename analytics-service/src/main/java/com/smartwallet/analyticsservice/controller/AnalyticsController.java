@@ -2,9 +2,11 @@ package com.smartwallet.analyticsservice.controller;
 
 import com.smartwallet.analyticsservice.dto.response.*;
 import com.smartwallet.analyticsservice.service.AnalyticsService;
+import com.smartwallet.analyticsservice.entity.CurrencyCode;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -29,8 +31,12 @@ public class AnalyticsController {
             @RequestParam
             @Min(value = 1)
             @Max(value = 12)
-            int month
+            int month,
+
+            @RequestParam
+            CurrencyCode currency
     ) {
+
         Long userId =
                 Long.parseLong(jwt.getSubject());
 
@@ -38,7 +44,8 @@ public class AnalyticsController {
                 analyticsService.getMonthlyAnalytics(
                         userId,
                         year,
-                        month
+                        month,
+                        currency
                 )
         );
     }
@@ -52,7 +59,9 @@ public class AnalyticsController {
             @RequestParam
             @Min(value = 1)
             @Max(value = 12)
-            int month
+            int month,
+            @RequestParam
+            CurrencyCode currency
     ) {
         Long userId =
                 Long.parseLong(jwt.getSubject());
@@ -61,7 +70,8 @@ public class AnalyticsController {
                 analyticsService.getDailyExpense(
                         userId,
                         year,
-                        month
+                        month,
+                        currency
                 );
 
         return ResponseEntity.ok(response);
@@ -76,14 +86,17 @@ public class AnalyticsController {
             @RequestParam
             @Min(value = 1)
             @Max(value = 12)
-            int month
+            int month,
+            @RequestParam
+            CurrencyCode currency
     ){
         Long userId =
                 Long.parseLong(jwt.getSubject());
         MonthlyCategoryAnalyticsResponse response = analyticsService.getMonthlyCategoryAnalytics(
                 userId,
                 year,
-                month
+                month,
+                currency
         );
 
         return ResponseEntity.ok(response);
@@ -101,11 +114,19 @@ public class AnalyticsController {
                     value = 120,
                     message = "Months cannot exceed 12"
             )
-            int months
+            int months,
+            @RequestParam
+            CurrencyCode currency
     ){
         Long userId =
                 Long.parseLong(jwt.getSubject());
-        MonthlyTrendResponse response = analyticsService.getMonthlyTrend(userId, months);
+        MonthlyTrendResponse response =
+                analyticsService
+                        .getMonthlyTrend(
+                                userId,
+                                months,
+                                currency
+                        );
 
         return ResponseEntity.ok(response);
 
@@ -130,7 +151,9 @@ public class AnalyticsController {
             @RequestParam
             @Min(value = 1)
             @Max(value = 12)
-            int comparisonMonth
+            int comparisonMonth,
+            @RequestParam
+            CurrencyCode currency
     ){
         Long userId =
                 Long.parseLong(jwt.getSubject());
@@ -141,7 +164,8 @@ public class AnalyticsController {
                         baseYear,
                         baseMonth,
                         comparisonYear,
-                        comparisonMonth
+                        comparisonMonth,
+                        currency
                 );
 
         return ResponseEntity.ok(monthlyComparisonResponse);
@@ -157,7 +181,9 @@ public class AnalyticsController {
                     value = 2000,
                     message = "Year must be at least 2000"
             )
-            int year
+            int year,
+            @RequestParam
+            CurrencyCode currency
     ) {
         Long userId =
                 Long.parseLong(jwt.getSubject());
@@ -165,7 +191,8 @@ public class AnalyticsController {
         YearlyAnalyticsResponse response =
                 analyticsService.getYearlyAnalytics(
                         userId,
-                        year
+                        year,
+                        currency
                 );
 
         return ResponseEntity.ok(response);

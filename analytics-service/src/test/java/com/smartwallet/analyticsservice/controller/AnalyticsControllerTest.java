@@ -8,6 +8,7 @@ import com.smartwallet.analyticsservice.dto.response.MonthlyComparisonResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyTrendItemResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyTrendResponse;
 import com.smartwallet.analyticsservice.dto.response.YearlyAnalyticsResponse;
+import com.smartwallet.analyticsservice.entity.CurrencyCode;
 import com.smartwallet.analyticsservice.service.AnalyticsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -52,14 +54,16 @@ class AnalyticsControllerTest {
                         new BigDecimal("5000.00"),
                         new BigDecimal("2000.00"),
                         new BigDecimal("3000.00"),
-                        4L
+                        4L,
+                        CurrencyCode.TRY
                 );
 
         when(
                 analyticsService.getMonthlyAnalytics(
                         1L,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 )
         ).thenReturn(response);
 
@@ -67,6 +71,7 @@ class AnalyticsControllerTest {
                         get("/api/analytics/monthly")
                                 .param("year", "2026")
                                 .param("month", "7")
+                                .param("currency", "TRY")
                                 .with(
                                         jwt().jwt(
                                                 token -> token.subject("1")
@@ -103,7 +108,8 @@ class AnalyticsControllerTest {
                 .getMonthlyAnalytics(
                         1L,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
     }
 
@@ -115,6 +121,7 @@ class AnalyticsControllerTest {
                         get("/api/analytics/monthly")
                                 .param("year", "2026")
                                 .param("month", "7")
+                                .param("currency", "TRY")
                 )
                 .andExpect(status().isUnauthorized());
 
@@ -129,6 +136,7 @@ class AnalyticsControllerTest {
                         get("/api/analytics/monthly")
                                 .param("year", "2026")
                                 .param("month", "13")
+                                .param("currency", "TRY")
                                 .with(
                                         jwt().jwt(
                                                 token -> token.subject("1")
@@ -148,6 +156,7 @@ class AnalyticsControllerTest {
                         get("/api/analytics/monthly")
                                 .param("year", "1999")
                                 .param("month", "7")
+                                .param("currency", "TRY")
                                 .with(
                                         jwt().jwt(
                                                 token -> token.subject("1")
@@ -174,18 +183,21 @@ class AnalyticsControllerTest {
                                         new BigDecimal("3000.00"),
                                         4L
                                 )
-                        )
+                        ),
+                        CurrencyCode.TRY
                 );
 
         when(
                 analyticsService.getMonthlyTrend(
                         1L,
-                        6
+                        6,
+                        CurrencyCode.TRY
                 )
         ).thenReturn(response);
 
         mockMvc.perform(
                         get("/api/analytics/monthly-trend")
+                                .param("currency", "TRY")
                                 .with(
                                         jwt().jwt(
                                                 token -> token.subject("1")
@@ -213,7 +225,8 @@ class AnalyticsControllerTest {
         verify(analyticsService)
                 .getMonthlyTrend(
                         1L,
-                        6
+                        6,
+                        CurrencyCode.TRY
                 );
     }
 
@@ -222,18 +235,20 @@ class AnalyticsControllerTest {
             throws Exception {
 
         MonthlyTrendResponse response =
-                new MonthlyTrendResponse(List.of());
+                new MonthlyTrendResponse(List.of(),CurrencyCode.TRY);
 
         when(
                 analyticsService.getMonthlyTrend(
                         5L,
-                        3
+                        3,
+                        CurrencyCode.TRY
                 )
         ).thenReturn(response);
 
         mockMvc.perform(
                         get("/api/analytics/monthly-trend")
                                 .param("months", "3")
+                                .param("currency", "TRY")
                                 .with(
                                         jwt().jwt(
                                                 token -> token.subject("5")
@@ -249,7 +264,8 @@ class AnalyticsControllerTest {
         verify(analyticsService)
                 .getMonthlyTrend(
                         5L,
-                        3
+                        3,
+                        CurrencyCode.TRY
                 );
     }
 
@@ -280,7 +296,8 @@ class AnalyticsControllerTest {
                         basePeriod,
                         comparisonPeriod,
                         new BigDecimal("25.00"),
-                        new BigDecimal("-20.00")
+                        new BigDecimal("-20.00"),
+                        CurrencyCode.TRY
                 );
 
         when(
@@ -289,7 +306,8 @@ class AnalyticsControllerTest {
                         2026,
                         5,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 )
         ).thenReturn(response);
 
@@ -299,6 +317,7 @@ class AnalyticsControllerTest {
                                 .param("baseMonth", "5")
                                 .param("comparisonYear", "2026")
                                 .param("comparisonMonth", "7")
+                                .param("currency", "TRY")
                                 .with(
                                         jwt().jwt(
                                                 token -> token.subject("1")
@@ -329,7 +348,8 @@ class AnalyticsControllerTest {
                         2026,
                         5,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
     }
 
@@ -344,19 +364,22 @@ class AnalyticsControllerTest {
                         new BigDecimal("36000.00"),
                         new BigDecimal("24000.00"),
                         120L,
-                        new BigDecimal("3000.00")
+                        new BigDecimal("3000.00"),
+                        CurrencyCode.TRY
                 );
 
         when(
                 analyticsService.getYearlyAnalytics(
                         1L,
-                        2026
+                        2026,
+                        CurrencyCode.TRY
                 )
         ).thenReturn(response);
 
         mockMvc.perform(
                         get("/api/analytics/yearly")
                                 .param("year", "2026")
+                                .param("currency", "TRY")
                                 .with(
                                         jwt().jwt(
                                                 token -> token.subject("1")
@@ -388,7 +411,8 @@ class AnalyticsControllerTest {
         verify(analyticsService)
                 .getYearlyAnalytics(
                         1L,
-                        2026
+                        2026,
+                        CurrencyCode.TRY
                 );
     }
 
@@ -401,6 +425,7 @@ class AnalyticsControllerTest {
                         2026,
                         7,
                         new BigDecimal("1500.00"),
+                        CurrencyCode.TRY,
                         List.of()
                 );
 
@@ -408,7 +433,8 @@ class AnalyticsControllerTest {
                 analyticsService.getMonthlyCategoryAnalytics(
                         1L,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 )
         ).thenReturn(response);
 
@@ -416,6 +442,7 @@ class AnalyticsControllerTest {
                         get("/api/analytics/monthly/categories")
                                 .param("year", "2026")
                                 .param("month", "7")
+                                .param("currency", "TRY")
                                 .with(
                                         jwt().jwt(
                                                 token -> token.subject("1")
@@ -444,7 +471,8 @@ class AnalyticsControllerTest {
                 .getMonthlyCategoryAnalytics(
                         1L,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
     }
 }

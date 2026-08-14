@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 
 @DataJpaTest
 @Testcontainers
@@ -130,7 +131,8 @@ class TransactionProjectionRepositoryTest {
                                         "2026-08-01T00:00:00Z"
                                 ),
                                 ProjectionTransactionType.INCOME,
-                                ProjectionTransactionType.EXPENSE
+                                ProjectionTransactionType.EXPENSE,
+                                CurrencyCode.TRY
                         );
 
         assertThat(aggregate.totalIncome())
@@ -181,7 +183,6 @@ class TransactionProjectionRepositoryTest {
                                 "2026-07-07T10:00:00Z"
                         ),
 
-                        // Income kategori giderine dahil edilmemeli
                         createProjection(
                                 13L,
                                 1L,
@@ -194,7 +195,6 @@ class TransactionProjectionRepositoryTest {
                                 "2026-07-08T10:00:00Z"
                         ),
 
-                        // Başka kullanıcı dahil edilmemeli
                         createProjection(
                                 14L,
                                 2L,
@@ -219,7 +219,8 @@ class TransactionProjectionRepositoryTest {
                                 Instant.parse(
                                         "2026-08-01T00:00:00Z"
                                 ),
-                                ProjectionTransactionType.EXPENSE
+                                ProjectionTransactionType.EXPENSE,
+                                CurrencyCode.TRY
                         );
 
         assertThat(result)
