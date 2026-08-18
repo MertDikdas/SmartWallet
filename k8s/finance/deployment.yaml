@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: finance-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: finance-service
+
+  template:
+    metadata:
+      labels:
+        app: finance-service
+
+    spec:
+      containers:
+        - name: finance-service
+          image: smartwallet-finance:1.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8082
+
+          envFrom:
+            - configMapRef:
+                name: finance-config
+
+            - secretRef:
+                name: finance-secret
+
+          volumeMounts:
+            - name: jwt-public-key
+              mountPath: /run/secrets/jwt_public_key
+              subPath: jwt_public_key
+              readOnly: true
+
+        volumes:
+        - name: jwt-public-key
+          secret:
+            secretName: jwt-public-key

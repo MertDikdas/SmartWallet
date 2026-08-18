@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: analytics-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: analytics-service
+
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+
+    spec:
+      containers:
+        - name: analytics-service
+          image: smartwallet-analytics:1.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8085
+
+          envFrom:
+            - configMapRef:
+                name: analytics-config
+
+            - secretRef:
+                name: analytics-secret
+
+          volumeMounts:
+            - name: jwt-public-key
+              mountPath: /run/secrets/jwt_public_key
+              subPath: jwt_public_key
+              readOnly: true
+
+      volumes:
+        - name: jwt-public-key
+          secret:
+            secretName: jwt-public-key

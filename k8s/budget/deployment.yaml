@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: budget-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: budget-service
+
+  template:
+    metadata:
+      labels:
+        app: budget-service
+
+    spec:
+      containers:
+        - name: budget-service
+          image: smartwallet-budget:1.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8083
+
+          envFrom:
+            - configMapRef:
+                name: budget-config
+
+            - secretRef:
+                name: budget-secret
+
+          volumeMounts:
+            - name: jwt-public-key
+              mountPath: /run/secrets/jwt_public_key
+              subPath: jwt_public_key
+              readOnly: true
+
+      volumes:
+        - name: jwt-public-key
+          secret:
+            secretName: jwt-public-key

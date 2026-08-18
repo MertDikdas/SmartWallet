@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: auth-config
+
+data:
+  AUTH_DB_URL: "jdbc:postgresql://auth-postgres:5432/smartwallet_auth"
+  JWT_PRIVATE_KEY_LOCATION: "file:/run/secrets/jwt_private_key"
+  JWT_PUBLIC_KEY_LOCATION: "file:/run/secrets/jwt_public_key"
