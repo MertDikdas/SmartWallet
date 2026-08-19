@@ -19,11 +19,25 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: smartwallet-gateway:1.0
+          image: smartwallet-gateway:1.1
           imagePullPolicy: IfNotPresent
 
           ports:
             - containerPort: 8080
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
 
           envFrom:
             - configMapRef:

@@ -19,11 +19,25 @@ spec:
     spec:
       containers:
         - name: finance-service
-          image: smartwallet-finance:1.0
+          image: smartwallet-finance:1.2
           imagePullPolicy: IfNotPresent
 
           ports:
             - containerPort: 8082
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 15
 
           envFrom:
             - configMapRef:
@@ -38,7 +52,7 @@ spec:
               subPath: jwt_public_key
               readOnly: true
 
-        volumes:
+      volumes:
         - name: jwt-public-key
           secret:
             secretName: jwt-public-key

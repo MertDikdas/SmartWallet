@@ -40,7 +40,7 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
-                                "/actuator/health",
+                                "/actuator/health/**",
                                 "/error"
                         ).permitAll()
                         .requestMatchers("/api/users/me").authenticated()
