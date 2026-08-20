@@ -39,6 +39,14 @@ spec:
             initialDelaySeconds: 20
             periodSeconds: 10
 
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+
           envFrom:
             - configMapRef:
                 name: api-gateway-config

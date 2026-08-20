@@ -37,6 +37,10 @@ spec:
             initialDelaySeconds: 20
             periodSeconds: 15
 
+          volumeMounts:
+            - name: rabbitmq-storage
+              mountPath: /var/lib/rabbitmq
+
           env:
             - name: RABBITMQ_DEFAULT_USER
               valueFrom:
