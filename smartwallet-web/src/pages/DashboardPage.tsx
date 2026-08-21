@@ -619,7 +619,6 @@ function DashboardPage() {
                         <BudgetsView
                             budgets={budgets}
                             categoryName={categoryName}
-                            primaryCurrency={primaryCurrency}
                             onAdd={() => setModal('budget')}
                             onEdit={handleEditBudget}
                         />
@@ -1865,13 +1864,11 @@ function TransactionList({
 function BudgetsView({
     budgets,
     categoryName,
-    primaryCurrency,
     onAdd,
     onEdit,
 }: {
     budgets: Budget[]
     categoryName: (id: number) => string
-    primaryCurrency: string
     onAdd: () => void
     onEdit: (budget:Budget) => void
 }) {
