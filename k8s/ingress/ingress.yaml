@@ -12,7 +12,7 @@ spec:
 
       http:
         paths:
-          - path: /
+          - path: /api
             pathType: Prefix
 
             backend:
@@ -20,3 +20,11 @@ spec:
                 name: api-gateway
                 port:
                   number: 8080
+
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: smartwallet-web
+                port:
+                  number: 80
