@@ -53,3 +53,7 @@ spec:
                 secretKeyRef:
                   name: finance-secret
                   key: RABBITMQ_PASSWORD
+      volumes:
+        - name: rabbitmq-storage
+          persistentVolumeClaim:
+            claimName: rabbitmq-pvc
