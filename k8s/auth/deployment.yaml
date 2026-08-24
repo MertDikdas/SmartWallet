@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: smartwallet-auth:1.1
+          image: ghcr.io/mertdikdas/smartwallet-auth:latest
           imagePullPolicy: IfNotPresent
 
           ports:

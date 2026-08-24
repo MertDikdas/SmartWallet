@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: smartwallet-gateway:1.1
+          image: ghcr.io/mertdikdas/smartwallet-api-gateway:latest
           imagePullPolicy: IfNotPresent
 
           ports:

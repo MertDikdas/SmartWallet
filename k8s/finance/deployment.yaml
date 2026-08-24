@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: finance-service
-          image: smartwallet-finance:1.3
+          image: ghcr.io/mertdikdas/smartwallet-finance:latest
           imagePullPolicy: IfNotPresent
 
           ports:
