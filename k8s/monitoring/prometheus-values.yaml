@@ -1,0 +1,6 @@
+scrapeConfigs:
+  finance-service:
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - finance-service.default.svc.cluster.local:8082
