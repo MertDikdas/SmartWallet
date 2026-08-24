@@ -526,6 +526,107 @@ Kubernetes Environment
 ```
 
 Application container images are built by GitHub Actions and stored in GHCR, allowing Kubernetes to pull prebuilt images independently of the developer machine.
+---
+
+# Monitoring and observability
+
+SmartWallet includes a monitoring stack based on Prometheus and Grafana running inside the local Kubernetes environment.
+
+Finance Service exposes application and JVM metrics through Spring Boot Actuator and Micrometer at:
+
+```text
+/actuator/prometheus
+```
+
+Prometheus periodically scrapes these metrics through Kubernetes internal DNS. The scrape configuration is stored in:
+
+```text
+k8s/monitoring/prometheus-values.yaml
+```
+
+Prometheus can be accessed locally with:
+
+```bash
+kubectl port-forward -n monitoring svc/prometheus-server 9090:80
+```
+
+Grafana uses Prometheus as its data source and provides dashboards for:
+
+- CPU utilization
+- JVM heap memory usage
+- HTTP request rate
+- Active database connections
+
+Grafana can be accessed locally with:
+
+```bash
+kubectl port-forward -n monitoring svc/grafana 3000:80
+```
+
+## Autoscaling validation
+
+Finance Service uses a Kubernetes HorizontalPodAutoscaler configured with:
+
+- Minimum replicas: `1`
+- Maximum replicas: `5`
+- Target CPU utilization: `60%`
+
+Autoscaling was validated by generating continuous traffic against Finance Service:
+
+```bash
+kubectl run load-generator \
+  --image=busybox:1.36 \
+  --restart=Never \
+  -- /bin/sh -c \
+  'while true; do wget -q -O- http://finance-service:8082/actuator/health >/dev/null; done'
+```
+
+The HPA was monitored with:
+
+```bash
+kubectl get hpa finance-service -w
+```
+
+During the load test, CPU utilization exceeded the configured `60%` target and reached `100%`. Kubernetes automatically scaled Finance Service from `1` to `2` replicas.
+
+After the workload was distributed across the replicas, average CPU utilization decreased below the target.
+
+The load test was also observed through Grafana, providing visibility into:
+
+- CPU utilization
+- HTTP request rate
+- JVM memory usage
+- Active database connections
+
+The load generator can be removed after testing with:
+
+```bash
+kubectl delete pod load-generator
+```
+
+The monitoring and autoscaling flow is:
+
+```text
+Finance Service
+      │
+      │ Micrometer / Actuator
+      ▼
+Prometheus
+      │
+      ▼
+Grafana
+
+
+Metrics Server
+      │
+      ▼
+Horizontal Pod Autoscaler
+      │
+      ▼
+Finance Service replicas
+```
+
+---
 
 # Current scope
 
