@@ -23,13 +23,27 @@ jobs:
       fail-fast: false
 
       matrix:
-        service:
-          - auth-service
-          - finance-service
-          - budget-service
-          - notification-service
-          - analytics-service
-          - api-gateway
+        include:
+          - service: auth-service
+            image: smartwallet-auth
+
+          - service: finance-service
+            image: smartwallet-finance
+
+          - service: budget-service
+            image: smartwallet-budget
+
+          - service: notification-service
+            image: smartwallet-notification
+
+          - service: analytics-service
+            image: smartwallet-analytics
+
+          - service: api-gateway
+            image: smartwallet-api-gateway
+
+          - service: smartwallet-web
+            image: smartwallet-web
 
     steps:
       - name: Checkout repository
@@ -52,7 +66,7 @@ jobs:
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           SHORT_SHA="${GITHUB_SHA::12}"
 
-          echo "name=ghcr.io/${OWNER}/smartwallet-${{ matrix.service }}" \
+          echo "name=ghcr.io/${OWNER}/${{ matrix.image }}" \
             >> "$GITHUB_OUTPUT"
 
           echo "short_sha=${SHORT_SHA}" \

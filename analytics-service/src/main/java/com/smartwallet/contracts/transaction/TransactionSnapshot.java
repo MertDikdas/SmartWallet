@@ -11,6 +11,7 @@ public record TransactionSnapshot(
         String categoryName,
         String transactionType,
         BigDecimal amount,
+        CurrencyCode currency,
         Instant transactionDate
 ) {
 }

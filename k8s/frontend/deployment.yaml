@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: smartwallet-web
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: smartwallet-web
+
+  template:
+    metadata:
+      labels:
+        app: smartwallet-web
+
+    spec:
+      containers:
+        - name: smartwallet-web
+          image: smartwallet-web:1.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 80
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              port: 80
+              path: /
+            initialDelaySeconds: 10
+            periodSeconds: 15
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

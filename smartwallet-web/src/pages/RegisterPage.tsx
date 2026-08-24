@@ -58,11 +58,11 @@ function RegisterPage() {
                         <div className="auth-name-grid">
                             <div>
                                 <label htmlFor="firstName">First name</label>
-                                <input id="firstName" type="text" placeholder="Mert" maxLength={100} autoComplete="given-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} required />
+                                <input id="firstName" type="text" placeholder="Name" maxLength={100} autoComplete="given-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} required />
                             </div>
                             <div>
                                 <label htmlFor="lastName">Last name</label>
-                                <input id="lastName" type="text" placeholder="Dikdaş" maxLength={100} autoComplete="family-name" value={lastName} onChange={(event) => setLastName(event.target.value)} required />
+                                <input id="lastName" type="text" placeholder="Surname" maxLength={100} autoComplete="family-name" value={lastName} onChange={(event) => setLastName(event.target.value)} required />
                             </div>
                         </div>
 

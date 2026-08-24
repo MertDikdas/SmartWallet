@@ -61,6 +61,10 @@ public class Budget {
     private Integer month;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 3)
+    private CurrencyCode currency;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private BudgetStatus status;
 

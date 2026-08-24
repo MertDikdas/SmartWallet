@@ -6,6 +6,7 @@ import com.smartwallet.budgetservice.client.dto.CategoryDetailsResponse;
 import com.smartwallet.budgetservice.dto.request.CreateBudgetRequest;
 import com.smartwallet.budgetservice.dto.response.BudgetResponse;
 import com.smartwallet.budgetservice.entity.Budget;
+import com.smartwallet.budgetservice.entity.CurrencyCode;
 import com.smartwallet.budgetservice.exception.InvalidBudgetCategoryException;
 import com.smartwallet.budgetservice.mapper.BudgetMapper;
 import com.smartwallet.budgetservice.outbox.BudgetEventOutboxService;
@@ -51,7 +52,8 @@ public class BudgetServiceTest {
                         99L,
                         new BigDecimal("1000.00"),
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
 
         when(
@@ -90,7 +92,8 @@ public class BudgetServiceTest {
                         99L,
                         new BigDecimal("1000.00"),
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
 
         CategoryDetailsResponse category =

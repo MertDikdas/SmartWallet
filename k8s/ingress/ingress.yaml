@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: smartwallet-ingress
+
+spec:
+  ingressClassName: nginx
+
+  rules:
+    - host: smartwallet.local
+
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: smartwallet-web
+                port:
+                  number: 80

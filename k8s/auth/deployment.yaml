@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: auth-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: auth-service
+
+  template:
+    metadata:
+      labels:
+        app: auth-service
+
+    spec:
+      containers:
+        - name: auth-service
+          image: smartwallet-auth:1.1
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8081
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "400m"
+              memory: "512Mi"
+
+          envFrom:
+            - configMapRef:
+                name: auth-config
+
+            - secretRef:
+                name: auth-secret
+
+          volumeMounts:
+            - name: jwt-private-key
+              mountPath: /run/secrets/jwt_private_key
+              subPath: jwt_private_key
+              readOnly: true
+
+            - name: jwt-public-key
+              mountPath: /run/secrets/jwt_public_key
+              subPath: jwt_public_key
+              readOnly: true
+
+      volumes:
+        - name: jwt-private-key
+          secret:
+            secretName: jwt-private-key
+
+        - name: jwt-public-key
+          secret:
+            secretName: jwt-public-key

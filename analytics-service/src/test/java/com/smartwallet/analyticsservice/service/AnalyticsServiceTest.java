@@ -9,6 +9,7 @@ import com.smartwallet.analyticsservice.dto.response.MonthlyCategoryAnalyticsRes
 import com.smartwallet.analyticsservice.dto.response.MonthlyComparisonResponse;
 import com.smartwallet.analyticsservice.dto.response.MonthlyTrendResponse;
 import com.smartwallet.analyticsservice.dto.response.YearlyAnalyticsResponse;
+import com.smartwallet.analyticsservice.entity.CurrencyCode;
 import com.smartwallet.analyticsservice.entity.ProjectionTransactionType;
 import com.smartwallet.analyticsservice.repository.TransactionProjectionRepository;
 import org.junit.jupiter.api.Test;
@@ -60,7 +61,8 @@ class AnalyticsServiceTest {
                                 eq(startDate),
                                 eq(endDate),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(aggregate);
 
@@ -68,7 +70,8 @@ class AnalyticsServiceTest {
                 analyticsService.getMonthlyAnalytics(
                         1L,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
 
         assertThat(response.year())
@@ -106,7 +109,8 @@ class AnalyticsServiceTest {
                                 any(Instant.class),
                                 any(Instant.class),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(aggregate);
 
@@ -114,7 +118,8 @@ class AnalyticsServiceTest {
                 analyticsService.getMonthlyAnalytics(
                         1L,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
 
         assertThat(response.totalIncome())
@@ -166,7 +171,8 @@ class AnalyticsServiceTest {
                                         )
                                 ),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(aggregates);
 
@@ -174,7 +180,8 @@ class AnalyticsServiceTest {
                 analyticsService.getDailyExpense(
                         1L,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
 
         assertThat(response.year())
@@ -211,7 +218,8 @@ class AnalyticsServiceTest {
                                 any(Instant.class),
                                 any(Instant.class),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(List.of());
 
@@ -219,7 +227,8 @@ class AnalyticsServiceTest {
                 analyticsService.getDailyExpense(
                         1L,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
 
         assertThat(response.totalExpense())
@@ -261,7 +270,8 @@ class AnalyticsServiceTest {
                                                 "2026-08-01T00:00:00Z"
                                         )
                                 ),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(aggregates);
 
@@ -270,7 +280,8 @@ class AnalyticsServiceTest {
                         .getMonthlyCategoryAnalytics(
                                 1L,
                                 2026,
-                                7
+                                7,
+                                CurrencyCode.TRY
                         );
 
         assertThat(response.year())
@@ -315,7 +326,8 @@ class AnalyticsServiceTest {
                                 eq(1L),
                                 any(Instant.class),
                                 any(Instant.class),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(List.of());
 
@@ -324,7 +336,8 @@ class AnalyticsServiceTest {
                         .getMonthlyCategoryAnalytics(
                                 1L,
                                 2026,
-                                7
+                                7,
+                                CurrencyCode.TRY
                         );
 
         assertThat(response.totalExpense())
@@ -352,7 +365,8 @@ class AnalyticsServiceTest {
                                 eq(1L),
                                 any(Instant.class),
                                 any(Instant.class),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(aggregates);
 
@@ -361,7 +375,8 @@ class AnalyticsServiceTest {
                         .getMonthlyCategoryAnalytics(
                                 1L,
                                 2026,
-                                7
+                                7,
+                                CurrencyCode.TRY
                         );
 
         assertThat(response.totalExpense())
@@ -401,7 +416,8 @@ class AnalyticsServiceTest {
                                 any(Instant.class),
                                 any(Instant.class),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(
                 firstMonth,
@@ -412,7 +428,8 @@ class AnalyticsServiceTest {
         MonthlyTrendResponse response =
                 analyticsService.getMonthlyTrend(
                         1L,
-                        3
+                        3,
+                        CurrencyCode.TRY
                 );
 
         YearMonth currentMonth =
@@ -475,7 +492,8 @@ class AnalyticsServiceTest {
                                 any(Instant.class),
                                 any(Instant.class),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(
                 baseAggregate,
@@ -488,7 +506,8 @@ class AnalyticsServiceTest {
                         2026,
                         5,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
 
         assertThat(response.basePeriod().year())
@@ -533,7 +552,8 @@ class AnalyticsServiceTest {
                                 any(Instant.class),
                                 any(Instant.class),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(
                 baseAggregate,
@@ -546,7 +566,8 @@ class AnalyticsServiceTest {
                         2026,
                         6,
                         2026,
-                        7
+                        7,
+                        CurrencyCode.TRY
                 );
 
         assertThat(response.incomeChangePercentage())
@@ -580,14 +601,16 @@ class AnalyticsServiceTest {
                                         )
                                 ),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(aggregate);
 
         YearlyAnalyticsResponse response =
                 analyticsService.getYearlyAnalytics(
                         1L,
-                        2026
+                        2026,
+                        CurrencyCode.TRY
                 );
 
         assertThat(response.year())
@@ -625,14 +648,16 @@ class AnalyticsServiceTest {
                                 any(Instant.class),
                                 any(Instant.class),
                                 eq(ProjectionTransactionType.INCOME),
-                                eq(ProjectionTransactionType.EXPENSE)
+                                eq(ProjectionTransactionType.EXPENSE),
+                                eq(CurrencyCode.TRY)
                         )
         ).thenReturn(aggregate);
 
         YearlyAnalyticsResponse response =
                 analyticsService.getYearlyAnalytics(
                         1L,
-                        2026
+                        2026,
+                        CurrencyCode.TRY
                 );
 
         assertThat(response.totalIncome())

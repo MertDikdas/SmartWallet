@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: budget-config
+
+data:
+  BUDGET_DB_URL: "jdbc:postgresql://budget-postgres:5432/smartwallet_budget"
+
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"
+
+  FINANCE_SERVICE_URL: "http://finance-service:8082"
+
+  JWT_PUBLIC_KEY_LOCATION: "file:/run/secrets/jwt_public_key"
+

@@ -55,11 +55,12 @@ public class BudgetService {
 
         boolean exists =
                 budgetRepository
-                        .existsByUserIdAndCategoryIdAndYearAndMonth(
+                        .existsByUserIdAndCategoryIdAndYearAndMonthAndCurrency(
                                 userId,
                                 request.categoryId(),
                                 request.year(),
-                                request.month()
+                                request.month(),
+                                request.currency()
                         );
 
         if (exists) {
@@ -78,14 +79,16 @@ public class BudgetService {
                 .spentAmount(BigDecimal.ZERO)
                 .year(request.year())
                 .month(request.month())
+                .currency(request.currency())
                 .status(BudgetStatus.ACTIVE)
                 .build();
 
-        spendingRepository.findMonthlyCategorySpendingByUserIdAndCategoryIdAndYearAndMonth(
+        spendingRepository.findMonthlyCategorySpendingByUserIdAndCategoryIdAndYearAndMonthAndCurrency(
                 userId,
                 request.categoryId(),
                 request.year(),
-                request.month()
+                request.month(),
+                request.currency()
         ).ifPresent(spending -> {
             budget.setSpentAmount(spending.getSpentAmount());
             budget.recalculateStatus();

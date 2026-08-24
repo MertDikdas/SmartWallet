@@ -18,6 +18,7 @@ public class BudgetMapper {
                 budget.getYear(),
                 budget.getMonth(),
                 budget.getStatus(),
+                budget.getCurrency(),
                 budget.getCreatedAt(),
                 budget.getUpdatedAt()
         );

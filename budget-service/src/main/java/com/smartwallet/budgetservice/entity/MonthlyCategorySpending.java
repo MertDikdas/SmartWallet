@@ -52,6 +52,10 @@ public class MonthlyCategorySpending {
     @Column(nullable = false)
     private Integer month;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 3)
+    private CurrencyCode currency;
+
     @Column(
             name = "created_at",
             nullable = false,
