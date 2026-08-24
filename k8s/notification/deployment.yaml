@@ -25,6 +25,13 @@ spec:
           ports:
             - containerPort: 8084
 
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8084
+            periodSeconds: 10
+            failureThreshold: 12
+
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
