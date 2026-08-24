@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: budget-service
-          image: smartwallet-budget:1.1
+          image: ghcr.io/mertdikdas/smartwallet-budget:latest
           imagePullPolicy: IfNotPresent
 
           ports:

@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: smartwallet-web
-          image: smartwallet-web:1.0
+          image: ghcr.io/mertdikdas/smartwallet-web:latest
           imagePullPolicy: IfNotPresent
 
           ports:
